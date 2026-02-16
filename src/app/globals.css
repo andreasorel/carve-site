@@ -2,26 +2,89 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  body {
+    @apply bg-paper text-ink font-body;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
+@layer components {
+  /* Newspaper rules */
+  .rule-thick {
+    @apply border-t-[3px] border-ink;
+  }
+  .rule-thin {
+    @apply border-t border-rule;
+  }
+  .rule-thick-thin {
+    @apply border-t-[3px] border-ink relative;
+  }
+  .rule-thick-thin::after {
+    content: "";
+    @apply absolute left-0 right-0 border-t border-rule;
+    bottom: -4px;
+  }
+  .rule-thin-thick-thin {
+    @apply border-t border-b border-rule relative;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  .rule-thin-thick-thin::before {
+    content: "";
+    @apply absolute left-0 right-0 border-t-[3px] border-ink;
+    top: 3px;
+  }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  /* Drop cap */
+  .drop-cap::first-letter {
+    @apply float-left font-headline font-black text-ink;
+    font-size: 4.5em;
+    line-height: 0.8;
+    padding-right: 0.08em;
+    margin-top: 0.05em;
+  }
+
+  /* Justified text */
+  .text-justify-newspaper {
+    text-align: justify;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+  }
+
+  /* Column rule */
+  .column-rule {
+    @apply border-l border-rule pl-6 md:pl-8;
+  }
+
+  /* Newspaper button */
+  .btn-newspaper {
+    @apply inline-block border border-ink px-5 py-2.5 font-ui text-sm tracking-wider uppercase
+           text-ink bg-transparent transition-all duration-200 hover:bg-ink hover:text-paper
+           cursor-pointer;
+    border-radius: 1px;
+  }
+  .btn-newspaper-accent {
+    @apply inline-block border border-accent px-5 py-2.5 font-ui text-sm tracking-wider uppercase
+           text-accent bg-transparent transition-all duration-200 hover:bg-accent hover:text-paper
+           cursor-pointer;
+    border-radius: 1px;
+  }
+
+  /* Ad block */
+  .ad-block {
+    @apply bg-ad-bg border-2 border-ad-border p-1;
+  }
+  .ad-block-inner {
+    @apply border border-ad-border p-6 md:p-8 text-center;
+  }
+
+  /* Ornamental divider */
+  .ornament {
+    @apply text-center text-ink-faint tracking-[0.5em] text-sm py-6;
+  }
+
+  /* Pull quote */
+  .pull-quote {
+    @apply border-l-2 border-r-2 border-accent px-6 py-4 my-8 text-center font-headline italic text-xl md:text-2xl text-ink-light;
   }
 }
