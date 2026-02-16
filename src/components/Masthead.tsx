@@ -1,6 +1,6 @@
 "use client";
 
-type Page = "home" | "services" | "insight";
+type Page = "home" | "services" | "insight" | "score";
 
 export default function Masthead({
   currentPage,
@@ -36,9 +36,12 @@ export default function Masthead({
               </button>
             ))}
           </nav>
-          <a href="#cta" className="btn-newspaper text-xs py-1.5 px-4">
+          <button
+            onClick={() => onNavigate("score")}
+            className="btn-newspaper text-xs py-1.5 px-4"
+          >
             Get Started
-          </a>
+          </button>
         </div>
       </div>
 

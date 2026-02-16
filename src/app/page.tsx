@@ -5,8 +5,9 @@ import Masthead from "@/components/Masthead";
 import HomePage from "@/components/HomePage";
 import ServicesPage from "@/components/ServicesPage";
 import InsightPage from "@/components/InsightPage";
+import ScorePage from "@/components/ScorePage";
 
-type Page = "home" | "services" | "insight";
+type Page = "home" | "services" | "insight" | "score";
 
 export default function Root() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
@@ -22,8 +23,9 @@ export default function Root() {
 
       <main className="mt-4">
         {currentPage === "home" && <HomePage onNavigate={navigate} />}
-        {currentPage === "services" && <ServicesPage />}
+        {currentPage === "services" && <ServicesPage onNavigate={navigate} />}
         {currentPage === "insight" && <InsightPage onNavigate={navigate} />}
+        {currentPage === "score" && <ScorePage />}
       </main>
 
       {/* Footer */}

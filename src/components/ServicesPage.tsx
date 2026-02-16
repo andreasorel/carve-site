@@ -62,7 +62,13 @@ const protocols = [
   },
 ];
 
-export default function ServicesPage() {
+type Page = "home" | "services" | "insight" | "score";
+
+export default function ServicesPage({
+  onNavigate,
+}: {
+  onNavigate: (page: Page) => void;
+}) {
   return (
     <div className="max-w-5xl mx-auto px-4">
       {/* Header */}
@@ -95,9 +101,9 @@ export default function ServicesPage() {
                 <p className="text-justify-newspaper text-ink-light leading-relaxed mb-4">
                   {tier.description}
                 </p>
-                <a href="#cta" className="btn-newspaper-accent text-xs">
+                <button onClick={() => onNavigate("score")} className="btn-newspaper-accent text-xs">
                   {tier.cta}
-                </a>
+                </button>
               </div>
             </div>
             {i < tiers.length - 1 && <div className="border-t border-rule" />}
@@ -162,9 +168,9 @@ export default function ServicesPage() {
           Start with a free score. No commitment required.
         </h3>
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <a href="#cta" className="btn-newspaper-accent">
+          <button onClick={() => onNavigate("score")} className="btn-newspaper-accent">
             Get Your Free Score
-          </a>
+          </button>
           <a href="#cta" className="btn-newspaper">
             Book a Call
           </a>

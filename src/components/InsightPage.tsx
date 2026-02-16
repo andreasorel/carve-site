@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-type Page = "home" | "services" | "insight";
+type Page = "home" | "services" | "insight" | "score";
 
 const faqItems = [
   {
@@ -221,9 +221,9 @@ export default function InsightPage({
           See where your products stand today.
         </h3>
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <a href="#cta" className="btn-newspaper-accent">
+          <button onClick={() => onNavigate("score")} className="btn-newspaper-accent">
             Get Your Free Score
-          </a>
+          </button>
           <a href="#cta" className="btn-newspaper">
             Book a Call
           </a>

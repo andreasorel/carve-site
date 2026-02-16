@@ -1,6 +1,6 @@
 "use client";
 
-type Page = "home" | "services" | "insight";
+type Page = "home" | "services" | "insight" | "score";
 
 export default function HomePage({
   onNavigate,
@@ -24,9 +24,9 @@ export default function HomePage({
           Your website disappeared from the journey.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4 mt-8">
-          <a href="#cta" className="btn-newspaper-accent">
+          <button onClick={() => onNavigate("score")} className="btn-newspaper-accent">
             Get Your Agent Score
-          </a>
+          </button>
           <a href="#cta" className="btn-newspaper">
             Book a Call
           </a>
@@ -133,9 +133,9 @@ export default function HomePage({
           <p className="font-body text-sm text-ink-light max-w-lg mx-auto mb-4">
             Upload your feed. Get scored across six dimensions in 30 seconds.
           </p>
-          <a href="#cta" className="btn-newspaper-accent">
+          <button onClick={() => onNavigate("score")} className="btn-newspaper-accent">
             Check Your Score
-          </a>
+          </button>
         </div>
       </section>
 
@@ -314,9 +314,9 @@ export default function HomePage({
           The race has started. See where your products stand.
         </h3>
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <a href="#cta" className="btn-newspaper-accent">
+          <button onClick={() => onNavigate("score")} className="btn-newspaper-accent">
             Get Your Score
-          </a>
+          </button>
           <a href="#cta" className="btn-newspaper">
             Book a Call
           </a>
