@@ -119,7 +119,7 @@ export default function HomePage({
         </div>
       </section>
 
-      <div className="ornament">&starf; &starf; &starf;</div>
+      <div className="ornament">{"\u2726 \u2726 \u2726"}</div>
 
       {/* 4. DISPLAY AD BANNER */}
       <section className="ad-block my-2">
@@ -139,7 +139,7 @@ export default function HomePage({
         </div>
       </section>
 
-      <div className="ornament">&starf; &starf; &starf;</div>
+      <div className="ornament">{"\u2726 \u2726 \u2726"}</div>
 
       {/* 5. WHAT CARVE DOES */}
       <section className="py-8">
@@ -218,7 +218,7 @@ export default function HomePage({
         </div>
       </section>
 
-      <div className="ornament">&starf; &starf; &starf;</div>
+      <div className="ornament">{"\u2726 \u2726 \u2726"}</div>
 
       {/* 6. PROTOCOLS */}
       <section className="my-2">
@@ -250,7 +250,7 @@ export default function HomePage({
         <div className="border-t-2 border-ink" />
       </section>
 
-      <div className="ornament">&starf; &starf; &starf;</div>
+      <div className="ornament">{"\u2726 \u2726 \u2726"}</div>
 
       {/* 7. THE CARVERS */}
       <section className="py-8">

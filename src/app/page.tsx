@@ -28,7 +28,7 @@ export default function Root() {
 
       {/* Footer */}
       <footer className="max-w-5xl mx-auto px-4 py-8 text-center">
-        <div className="ornament">&starf; &starf; &starf;</div>
+        <div className="ornament">{"\u2726 \u2726 \u2726"}</div>
         <p className="font-ui text-xs text-ink-faint">
           &copy; 2026 Carve. All rights reserved. Oslo, Norway.
         </p>

@@ -105,7 +105,7 @@ export default function ServicesPage() {
         ))}
       </section>
 
-      <div className="ornament">&starf; &starf; &starf;</div>
+      <div className="ornament">{"\u2726 \u2726 \u2726"}</div>
 
       {/* Protocols */}
       <section className="py-8">

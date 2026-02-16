@@ -85,7 +85,7 @@ export default function InsightPage({
         </div>
       </article>
 
-      <div className="ornament">&starf; &starf; &starf;</div>
+      <div className="ornament">{"\u2726 \u2726 \u2726"}</div>
 
       {/* Article 2: AI Escapes the Lab */}
       <article className="py-8">
@@ -129,7 +129,7 @@ export default function InsightPage({
         </div>
       </article>
 
-      <div className="ornament">&starf; &starf; &starf;</div>
+      <div className="ornament">{"\u2726 \u2726 \u2726"}</div>
 
       {/* Article 3: When the Agent Becomes the Storefront */}
       <article className="py-8">
@@ -163,7 +163,7 @@ export default function InsightPage({
         </div>
       </article>
 
-      <div className="ornament">&starf; &starf; &starf;</div>
+      <div className="ornament">{"\u2726 \u2726 \u2726"}</div>
 
       {/* FAQ */}
       <section className="py-8">
@@ -196,7 +196,7 @@ export default function InsightPage({
         </div>
       </section>
 
-      <div className="ornament">&starf; &starf; &starf;</div>
+      <div className="ornament">{"\u2726 \u2726 \u2726"}</div>
 
       {/* Link to Services */}
       <div className="text-center py-4">
