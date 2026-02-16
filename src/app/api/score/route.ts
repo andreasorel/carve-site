@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { discoverProducts } from "@/lib/crawler";
+import { discoverSiteData } from "@/lib/crawler";
 
 const inputSchema = z.object({
   url: z.string().url("Please enter a valid URL"),
@@ -34,10 +34,10 @@ export async function POST(req: NextRequest) {
       JSON.stringify({ email, url, timestamp: new Date().toISOString() }),
     );
 
-    // Crawl the site and discover product data
-    const { products, feeds } = await discoverProducts(url);
+    // Crawl the site and discover product data + store metadata
+    const { products, feeds, storeMeta } = await discoverSiteData(url);
 
-    return NextResponse.json({ products, feeds, url });
+    return NextResponse.json({ products, feeds, storeMeta, url });
   } catch (error) {
     console.error("Score crawl error:", error);
     return NextResponse.json(

@@ -1,12 +1,11 @@
+// ---------------------------------------------------------------------------
+// AI enrichment layer -- generates editorial commentary ONLY.
+// Scores, grades, and field audits are computed deterministically by scorer.ts.
+// ---------------------------------------------------------------------------
+
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import type { NormalizedProduct, DiscoveredFeed, Scorecard } from "./types";
-import {
-  ACP_REQUIRED_FIELDS,
-  ACP_CONDITIONAL_FIELDS,
-  ACP_RECOMMENDED_FIELDS,
-  ACP_QUALITY_DIMENSIONS,
-} from "./acp-spec";
+import type { NormalizedProduct, Scorecard } from "./types";
 
 // ---------------------------------------------------------------------------
 // Anthropic client (lazy-initialized to ensure env vars are available)
@@ -23,49 +22,25 @@ function getClient(): Anthropic {
 }
 
 // ---------------------------------------------------------------------------
-// Zod schema for validating the AI response
+// Zod schema for the AI enrichment response
 // ---------------------------------------------------------------------------
 
-const gradeSchema = z.enum(["A", "B", "C", "D", "F"]);
-
-const dimensionScoreSchema = z.object({
-  name: z.string(),
-  score: z.number().min(0).max(100),
-  grade: gradeSchema,
+const dimensionNarrativeSchema = z.object({
   findings: z.array(z.string()),
   recommendations: z.array(z.string()),
 });
 
-const discoveredFeedSchema = z.object({
-  type: z.enum([
-    "json-ld",
-    "sitemap",
-    "shopify",
-    "woocommerce",
-    "meta-tags",
-    "microdata",
-  ]),
-  url: z.string(),
-  productCount: z.number().nullable(),
-});
-
-const scorecardSchema = z.object({
-  url: z.string(),
-  overallScore: z.number().min(0).max(100),
-  overallGrade: gradeSchema,
+const aiEnrichmentSchema = z.object({
   headline: z.string(),
   summary: z.string(),
   dimensions: z.object({
-    contentCompleteness: dimensionScoreSchema,
-    variantHandling: dimensionScoreSchema,
-    sellerIntegrity: dimensionScoreSchema,
-    eligibilityFlags: dimensionScoreSchema,
-    contentQuality: dimensionScoreSchema,
-    enrichment: dimensionScoreSchema,
+    contentCompleteness: dimensionNarrativeSchema,
+    variantHandling: dimensionNarrativeSchema,
+    sellerIntegrity: dimensionNarrativeSchema,
+    eligibilityFlags: dimensionNarrativeSchema,
+    contentQuality: dimensionNarrativeSchema,
+    enrichment: dimensionNarrativeSchema,
   }),
-  discoveredFeeds: z.array(discoveredFeedSchema),
-  sampleSize: z.number(),
-  analyzedAt: z.string(),
 });
 
 // ---------------------------------------------------------------------------
@@ -97,220 +72,149 @@ function truncateProduct(product: NormalizedProduct): Record<string, unknown> {
 }
 
 function buildSystemPrompt(): string {
-  return `You are an expert ecommerce data analyst specializing in product feed quality assessment. You evaluate online stores against the OpenAI Agent Commerce Protocol (ACP) specification.
+  return `You are an expert ecommerce analyst writing for a newspaper-style scorecard. You receive a pre-computed ACP (Agent Commerce Protocol) readiness scorecard with deterministic scores, grades, and field-level audit data.
 
-Your analysis must be thorough, specific, and actionable. You score stores across 6 dimensions and produce structured JSON scorecards.
+Your job is to add editorial commentary:
+1. A witty, punchy newspaper headline that captures the overall assessment
+2. A 2-3 sentence executive summary explaining what this means for the store's visibility to AI shopping agents
+3. For each scoring dimension: 2-5 specific findings (what you observed) and 2-4 actionable recommendations
 
-You have a sharp, witty editorial voice. When writing headlines, channel the style of a newspaper editor — punchy, memorable, and occasionally cheeky. Headlines should capture the essence of the score in a single phrase.
+Focus on agentic commerce: explain HOW missing fields affect the store's visibility to ChatGPT, Claude, and other AI shopping agents. Be specific about what to fix and why it matters.
 
-CRITICAL: Respond with ONLY valid JSON. No markdown fences, no explanatory text, no code blocks. Just the raw JSON object.`;
+CRITICAL: Respond with ONLY valid JSON. No markdown fences, no explanatory text. Just the JSON object.`;
 }
 
 function buildUserPrompt(
-  url: string,
+  precomputed: Scorecard,
   products: NormalizedProduct[],
-  feeds: DiscoveredFeed[],
 ): string {
-  const requiredFieldsList = ACP_REQUIRED_FIELDS.map(
-    (f) => `  - ${f.name}: ${f.description}`,
-  ).join("\n");
+  const sampleProducts = products.slice(0, 3).map(truncateProduct);
 
-  const conditionalFieldsList = Object.entries(ACP_CONDITIONAL_FIELDS)
-    .map(
-      ([condition, fields]) =>
-        `  When ${condition}:\n${fields.map((f) => `    - ${f.name}: ${f.description}`).join("\n")}`,
-    )
-    .join("\n");
+  return `Here is the pre-computed ACP readiness scorecard with deterministic scores, grades, and field-level audit data:
 
-  const recommendedFieldsList = ACP_RECOMMENDED_FIELDS.map(
-    (f) => `  - ${f.name}: ${f.description}`,
-  ).join("\n");
+${JSON.stringify(precomputed, null, 2)}
 
-  const dimensionGuidelines = ACP_QUALITY_DIMENSIONS.map(
-    (d) =>
-      `  ${d.key} (${d.label}, weight ${(d.weight * 100).toFixed(0)}%): ${d.description}`,
-  ).join("\n");
+Here are ${sampleProducts.length} sample products for context:
 
-  const truncatedProducts = products.map(truncateProduct);
-
-  return `Analyze this webshop's product data against the OpenAI Agent Commerce Protocol (ACP).
-
-STORE URL: ${url}
-
-DISCOVERED DATA FEEDS:
-${JSON.stringify(feeds, null, 2)}
-
-PRODUCT SAMPLES (${products.length} products):
-${JSON.stringify(truncatedProducts, null, 2)}
+${JSON.stringify(sampleProducts, null, 2)}
 
 ---
 
-ACP REQUIRED FIELDS (17 total):
-${requiredFieldsList}
-
-ACP CONDITIONAL FIELDS:
-${conditionalFieldsList}
-
-ACP RECOMMENDED FIELDS:
-${recommendedFieldsList}
-
----
-
-SCORING DIMENSIONS & GUIDELINES:
-${dimensionGuidelines}
-
-For each dimension:
-- Score 0-100.
-- Grade: A (90-100), B (75-89), C (60-74), D (40-59), F (0-39).
-- Provide 2-5 specific findings (what you observed in the data).
-- Provide 2-4 actionable recommendations (what they should fix/add).
-
-Overall score = weighted average of dimension scores using the weights above.
-Overall grade uses the same A-F scale as dimensions.
-
-Generate a witty, newspaper-style headline that captures the overall assessment (e.g., "Extra, Extra! Shopify Store Ships Solid Data, But Variants Left in the Dark" or "Breaking: Premium Brand's Product Feed Reads Like a Blank Page").
-
----
-
-Respond with ONLY this exact JSON structure (no markdown, no code fences, no extra text):
+Based on the scorecard data above, provide ONLY a JSON object with this exact structure:
 
 {
-  "url": "${url}",
-  "overallScore": <0-100>,
-  "overallGrade": "<A|B|C|D|F>",
   "headline": "<witty newspaper headline>",
   "summary": "<2-3 sentence executive summary>",
   "dimensions": {
     "contentCompleteness": {
-      "name": "Content Completeness",
-      "score": <0-100>,
-      "grade": "<A|B|C|D|F>",
-      "findings": ["<finding 1>", "<finding 2>"],
-      "recommendations": ["<rec 1>", "<rec 2>"]
+      "findings": ["<finding 1>", "..."],
+      "recommendations": ["<rec 1>", "..."]
     },
     "variantHandling": {
-      "name": "Variant Handling",
-      "score": <0-100>,
-      "grade": "<A|B|C|D|F>",
       "findings": ["..."],
       "recommendations": ["..."]
     },
     "sellerIntegrity": {
-      "name": "Seller & Policy Integrity",
-      "score": <0-100>,
-      "grade": "<A|B|C|D|F>",
       "findings": ["..."],
       "recommendations": ["..."]
     },
     "eligibilityFlags": {
-      "name": "Eligibility Flags",
-      "score": <0-100>,
-      "grade": "<A|B|C|D|F>",
       "findings": ["..."],
       "recommendations": ["..."]
     },
     "contentQuality": {
-      "name": "Content Quality",
-      "score": <0-100>,
-      "grade": "<A|B|C|D|F>",
       "findings": ["..."],
       "recommendations": ["..."]
     },
     "enrichment": {
-      "name": "Enrichment",
-      "score": <0-100>,
-      "grade": "<A|B|C|D|F>",
       "findings": ["..."],
       "recommendations": ["..."]
     }
-  },
-  "discoveredFeeds": ${JSON.stringify(feeds)},
-  "sampleSize": ${products.length},
-  "analyzedAt": "${new Date().toISOString()}"
-}`;
+  }
+}
+
+Each dimension should have 2-5 findings and 2-4 recommendations. Do NOT include scores, grades, or fields -- those are already computed.`;
 }
 
 // ---------------------------------------------------------------------------
-// Fallback scorecard when AI response can't be parsed
+// Fallback: build a scorecard with generic findings when AI fails
 // ---------------------------------------------------------------------------
 
-function buildFallbackScorecard(
-  url: string,
-  products: NormalizedProduct[],
-  feeds: DiscoveredFeed[],
-  errorMsg: string,
-): Scorecard {
-  const emptyDimension = (name: string) => ({
-    name,
-    score: 0,
-    grade: "F" as const,
-    findings: ["Analysis could not be completed: " + errorMsg],
-    recommendations: [
-      "Please try again. If the issue persists, ensure the site is publicly accessible.",
-    ],
-  });
+function buildFallbackEnrichment(precomputed: Scorecard): Scorecard {
+  const enriched = { ...precomputed };
 
-  return {
-    url,
-    overallScore: 0,
-    overallGrade: "F",
-    headline: "Stop the Presses! Our Analysts Hit a Snag",
-    summary: `We were unable to fully analyze ${url}. ${errorMsg}`,
-    dimensions: {
-      contentCompleteness: emptyDimension("Content Completeness"),
-      variantHandling: emptyDimension("Variant Handling"),
-      sellerIntegrity: emptyDimension("Seller & Policy Integrity"),
-      eligibilityFlags: emptyDimension("Eligibility Flags"),
-      contentQuality: emptyDimension("Content Quality"),
-      enrichment: emptyDimension("Enrichment"),
-    },
-    discoveredFeeds: feeds,
-    sampleSize: products.length,
-    analyzedAt: new Date().toISOString(),
-  };
-}
+  enriched.headline = "Agent Readiness Report";
 
-// ---------------------------------------------------------------------------
-// Main analysis function
-// ---------------------------------------------------------------------------
+  // Count present fields across all dimensions
+  const allFields = Object.values(enriched.dimensions).flatMap(d => d.fields);
+  const presentCount = allFields.filter(
+    f => f.status === "present" || f.status === "warn",
+  ).length;
 
-export async function analyzeProducts(
-  url: string,
-  products: NormalizedProduct[],
-  feeds: DiscoveredFeed[],
-): Promise<Scorecard> {
-  // If no products were found, return a meaningful fallback
-  if (products.length === 0 && feeds.length === 0) {
-    return buildFallbackScorecard(
-      url,
-      products,
-      feeds,
-      "No product data or feeds were discovered on this site.",
+  enriched.summary = `Your store scored ${enriched.overallScore}/100 (${enriched.overallGrade}). ${presentCount} of 17 required ACP fields were detected.`;
+
+  // Set generic findings for each dimension based on field audit data
+  const dimensionKeys = [
+    "contentCompleteness",
+    "variantHandling",
+    "sellerIntegrity",
+    "eligibilityFlags",
+    "contentQuality",
+    "enrichment",
+  ] as const;
+
+  for (const key of dimensionKeys) {
+    const dim = enriched.dimensions[key];
+    dim.findings = dim.fields.map(f =>
+      f.status === "present" || f.status === "warn"
+        ? `Field ${f.fieldName}: detected`
+        : `Field ${f.fieldName}: not found`,
     );
+    dim.recommendations =
+      dim.fields
+        .filter(f => f.status === "missing" || f.status === "partial")
+        .slice(0, 4)
+        .map(f =>
+          f.fixHint
+            ? `Add ${f.fieldName}: ${f.fixHint}`
+            : `Add the missing ${f.fieldName} field to improve this dimension.`,
+        );
+    if (dim.recommendations.length === 0) {
+      dim.recommendations = [
+        "All tracked fields are present. Continue maintaining data quality.",
+      ];
+    }
   }
 
+  return enriched;
+}
+
+// ---------------------------------------------------------------------------
+// Main: enrich a pre-computed scorecard with AI commentary
+// ---------------------------------------------------------------------------
+
+export async function enrichScorecardWithAI(
+  precomputed: Scorecard,
+  products: NormalizedProduct[],
+): Promise<Scorecard> {
   try {
     const response = await getClient().messages.create({
       model: "claude-3-haiku-20240307",
-      max_tokens: 4096,
+      max_tokens: 2048,
       system: buildSystemPrompt(),
       messages: [
         {
           role: "user",
-          content: buildUserPrompt(url, products, feeds),
+          content: buildUserPrompt(precomputed, products),
         },
       ],
     });
 
     // Extract text content from the response
-    const textBlock = response.content.find((block) => block.type === "text");
+    const textBlock = response.content.find(block => block.type === "text");
     if (!textBlock || textBlock.type !== "text") {
-      return buildFallbackScorecard(
-        url,
-        products,
-        feeds,
-        "AI returned no text content.",
-      );
+      console.error("AI returned no text content.");
+      return buildFallbackEnrichment(precomputed);
     }
 
     const rawText = textBlock.text.trim();
@@ -332,35 +236,42 @@ export async function analyzeProducts(
         "Raw text:",
         rawText.slice(0, 500),
       );
-      return buildFallbackScorecard(
-        url,
-        products,
-        feeds,
-        "AI response was not valid JSON.",
-      );
+      return buildFallbackEnrichment(precomputed);
     }
 
     // Validate with Zod
-    const validated = scorecardSchema.safeParse(parsed);
-
+    const validated = aiEnrichmentSchema.safeParse(parsed);
     if (!validated.success) {
-      console.error(
-        "Scorecard validation failed:",
-        validated.error.issues,
-      );
-      return buildFallbackScorecard(
-        url,
-        products,
-        feeds,
-        "AI response did not match expected scorecard schema.",
-      );
+      console.error("AI enrichment validation failed:", validated.error.issues);
+      return buildFallbackEnrichment(precomputed);
     }
 
-    return validated.data as Scorecard;
+    // Merge AI commentary into the precomputed scorecard
+    // NEVER touch scores, grades, or fields -- only narrative content
+    const result = { ...precomputed };
+    result.headline = validated.data.headline;
+    result.summary = validated.data.summary;
+
+    const dimensionKeys = [
+      "contentCompleteness",
+      "variantHandling",
+      "sellerIntegrity",
+      "eligibilityFlags",
+      "contentQuality",
+      "enrichment",
+    ] as const;
+
+    for (const key of dimensionKeys) {
+      result.dimensions[key] = {
+        ...result.dimensions[key],
+        findings: validated.data.dimensions[key].findings,
+        recommendations: validated.data.dimensions[key].recommendations,
+      };
+    }
+
+    return result;
   } catch (error) {
     console.error("Anthropic API call failed:", error);
-    const message =
-      error instanceof Error ? error.message : "Unknown AI error";
-    return buildFallbackScorecard(url, products, feeds, message);
+    return buildFallbackEnrichment(precomputed);
   }
 }

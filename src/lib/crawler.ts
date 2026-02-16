@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import type { NormalizedProduct, DiscoveredFeed } from "./types";
+import type { NormalizedProduct, DiscoveredFeed, StoreMeta, SiteData } from "./types";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -111,6 +111,24 @@ function normalizeJsonLdProduct(
     | Record<string, unknown>
     | undefined;
 
+  // Extract condition from itemCondition, stripping schema.org prefix
+  const rawCondition = str(firstOffer.itemCondition);
+  const condition = rawCondition
+    ? rawCondition.replace(/^https?:\/\/schema\.org\//, "")
+    : undefined;
+
+  // Extract productId from productID or sku
+  const productId = str(data.productID) ?? str(data.sku);
+
+  // Extract additional images (skip the first one, which is the main image)
+  const additionalImageUrls: string[] = [];
+  if (Array.isArray(data.image) && data.image.length > 1) {
+    for (let i = 1; i < data.image.length; i++) {
+      const resolved = resolveUrl(data.image[i], baseUrl);
+      if (resolved) additionalImageUrls.push(resolved);
+    }
+  }
+
   return {
     source: "json-ld",
     title: str(data.name),
@@ -120,6 +138,8 @@ function normalizeJsonLdProduct(
       Array.isArray(data.image) ? data.image[0] : data.image,
       baseUrl,
     ),
+    additionalImageUrls:
+      additionalImageUrls.length > 0 ? additionalImageUrls : undefined,
     price:
       str(firstOffer.price) ??
       str(firstOffer.lowPrice),
@@ -137,6 +157,8 @@ function normalizeJsonLdProduct(
       str(data.gtin12) ??
       str(data.gtin14) ??
       str(data.gtin8),
+    condition,
+    productId,
     variants:
       offerList.length > 1
         ? offerList.map((o) => o as Record<string, unknown>)
@@ -208,6 +230,262 @@ function extractJsonLd(
       : null;
 
   return { products, feed };
+}
+
+// ---------------------------------------------------------------------------
+// JSON-LD Organization / Store extraction
+// ---------------------------------------------------------------------------
+
+const ORG_TYPES = new Set([
+  "Organization",
+  "WebSite",
+  "LocalBusiness",
+  "Store",
+  "OnlineStore",
+]);
+
+/**
+ * Search JSON-LD blocks for Organization / Store / WebSite data.
+ * Returns basic seller identity info or null.
+ */
+function extractJsonLdOrganization(
+  html: string,
+  baseUrl: string,
+): { name?: string; url?: string; country?: string } | null {
+  const $ = cheerio.load(html);
+  const candidates: Record<string, unknown>[] = [];
+
+  $('script[type="application/ld+json"]').each((_, el) => {
+    const raw = $(el).text();
+    const parsed = safeJsonParse(raw);
+    if (!parsed) return;
+
+    const objects: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
+
+    for (const obj of objects) {
+      if (typeof obj !== "object" || obj === null) continue;
+      const record = obj as Record<string, unknown>;
+
+      if (Array.isArray(record["@graph"])) {
+        for (const item of record["@graph"]) {
+          if (typeof item === "object" && item !== null) {
+            candidates.push(item as Record<string, unknown>);
+          }
+        }
+      } else {
+        candidates.push(record);
+      }
+    }
+  });
+
+  for (const candidate of candidates) {
+    const type = str(candidate["@type"]);
+    if (!type || !ORG_TYPES.has(type)) continue;
+
+    const address = candidate.address as Record<string, unknown> | undefined;
+    const country =
+      address && typeof address === "object"
+        ? str(address.addressCountry)
+        : undefined;
+
+    return {
+      name: str(candidate.name),
+      url: resolveUrl(candidate.url, baseUrl),
+      country,
+    };
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Shopify policies fetcher
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch /policies.json from a Shopify store and extract policy URLs.
+ */
+async function fetchShopifyPolicies(
+  baseUrl: string,
+): Promise<{
+  returnPolicy?: string;
+  privacyPolicy?: string;
+  termsOfService?: string;
+}> {
+  const body = await fetchPage(`${baseUrl}/policies.json`);
+  if (!body) return {};
+
+  const parsed = safeJsonParse(body);
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    !Array.isArray((parsed as Record<string, unknown>).policies)
+  ) {
+    return {};
+  }
+
+  const policies = (parsed as Record<string, unknown>).policies as Array<
+    Record<string, unknown>
+  >;
+
+  const result: {
+    returnPolicy?: string;
+    privacyPolicy?: string;
+    termsOfService?: string;
+  } = {};
+
+  for (const policy of policies) {
+    const policyType = str(policy.type);
+    const policyBody = str(policy.body);
+    if (!policyType || !policyBody) continue;
+
+    // Build URL from type slug: e.g. "refund_policy" → "refund-policy"
+    const slug = policyType.replace(/_/g, "-");
+    const policyUrl = `${baseUrl}/policies/${slug}`;
+
+    if (policyType === "refund_policy") {
+      result.returnPolicy = policyUrl;
+    } else if (policyType === "privacy_policy") {
+      result.privacyPolicy = policyUrl;
+    } else if (policyType === "terms_of_service") {
+      result.termsOfService = policyUrl;
+    }
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Footer link scanner
+// ---------------------------------------------------------------------------
+
+/**
+ * Scan footer (or bottom-of-page) links for policy URLs.
+ */
+function scanFooterLinks(
+  html: string,
+  baseUrl: string,
+): {
+  returnPolicy?: string;
+  privacyPolicy?: string;
+  termsOfService?: string;
+} {
+  const $ = cheerio.load(html);
+
+  const links = $("footer").length > 0 ? $("footer a") : $("a").slice(-50);
+
+  const result: {
+    returnPolicy?: string;
+    privacyPolicy?: string;
+    termsOfService?: string;
+  } = {};
+
+  links.each((_, el) => {
+    const href = $(el).attr("href");
+    if (!href) return;
+
+    const resolved = resolveUrl(href, baseUrl);
+    if (!resolved) return;
+
+    const hrefLower = href.toLowerCase();
+
+    if (/return|refund/i.test(hrefLower) && !result.returnPolicy) {
+      result.returnPolicy = resolved;
+    }
+    if (/privacy/i.test(hrefLower) && !result.privacyPolicy) {
+      result.privacyPolicy = resolved;
+    }
+    if (/terms|tos|conditions/i.test(hrefLower) && !result.termsOfService) {
+      result.termsOfService = resolved;
+    }
+  });
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Store metadata extraction
+// ---------------------------------------------------------------------------
+
+/**
+ * Build store-level metadata by combining JSON-LD, footer links, HTML hints,
+ * and (for Shopify) the policies.json endpoint.
+ */
+async function extractStoreMeta(
+  html: string | null,
+  baseUrl: string,
+  isShopify: boolean,
+): Promise<StoreMeta> {
+  const meta: StoreMeta = {
+    sellerName: null,
+    sellerUrl: baseUrl,
+    returnPolicy: null,
+    privacyPolicyUrl: null,
+    termsOfServiceUrl: null,
+    storeCountry: null,
+    targetCountries: [],
+    platform: isShopify ? "shopify" : "custom",
+  };
+
+  if (html) {
+    // (a) JSON-LD Organization data
+    const org = extractJsonLdOrganization(html, baseUrl);
+    if (org) {
+      if (org.name) meta.sellerName = org.name;
+      if (org.country) meta.storeCountry = org.country;
+    }
+
+    // (b) Footer link scan
+    const footerLinks = scanFooterLinks(html, baseUrl);
+    if (footerLinks.returnPolicy) meta.returnPolicy = footerLinks.returnPolicy;
+    if (footerLinks.privacyPolicy)
+      meta.privacyPolicyUrl = footerLinks.privacyPolicy;
+    if (footerLinks.termsOfService)
+      meta.termsOfServiceUrl = footerLinks.termsOfService;
+
+    // (c) <html lang="xx"> as storeCountry fallback
+    const $ = cheerio.load(html);
+    if (!meta.storeCountry) {
+      const htmlLang = $("html").attr("lang");
+      if (htmlLang && htmlLang.length >= 2) {
+        meta.storeCountry = htmlLang.slice(0, 2).toUpperCase();
+      }
+    }
+
+    // (d) <link rel="alternate" hreflang="xx"> for targetCountries
+    const hreflangs = new Set<string>();
+    $('link[rel="alternate"][hreflang]').each((_, el) => {
+      const hl = $(el).attr("hreflang");
+      if (hl && hl !== "x-default") {
+        hreflangs.add(hl.slice(0, 2).toUpperCase());
+      }
+    });
+    if (hreflangs.size > 0) {
+      meta.targetCountries = Array.from(hreflangs);
+    }
+
+    // (e) og:site_name as sellerName fallback
+    if (!meta.sellerName) {
+      const ogSiteName =
+        $('meta[property="og:site_name"]').attr("content");
+      if (ogSiteName) {
+        meta.sellerName = ogSiteName.trim() || null;
+      }
+    }
+  }
+
+  // Shopify policies are more reliable than footer links
+  if (isShopify) {
+    const shopifyPolicies = await fetchShopifyPolicies(baseUrl);
+    if (shopifyPolicies.returnPolicy)
+      meta.returnPolicy = shopifyPolicies.returnPolicy;
+    if (shopifyPolicies.privacyPolicy)
+      meta.privacyPolicyUrl = shopifyPolicies.privacyPolicy;
+    if (shopifyPolicies.termsOfService)
+      meta.termsOfServiceUrl = shopifyPolicies.termsOfService;
+  }
+
+  return meta;
 }
 
 // ---------------------------------------------------------------------------
@@ -343,6 +621,42 @@ async function detectShopify(
       ? (p.images as Array<Record<string, unknown>>)
       : [];
 
+    // Extract additional images (skip the first)
+    const additionalImageUrls: string[] = images
+      .slice(1)
+      .map((img) => str(img.src))
+      .filter((s): s is string => typeof s === "string" && s.length > 0);
+
+    // Extract tags
+    const tags: string[] | undefined = Array.isArray(p.tags)
+      ? (p.tags as unknown[]).filter(
+          (t): t is string => typeof t === "string",
+        )
+      : typeof p.tags === "string"
+        ? (p.tags as string).split(", ")
+        : undefined;
+
+    // Extract options
+    const options: Array<{ name: string; values: string[] }> | undefined =
+      Array.isArray(p.options)
+        ? (p.options as Array<Record<string, unknown>>).map((o) => ({
+            name: String(o.name || ""),
+            values: Array.isArray(o.values)
+              ? (o.values as unknown[]).map(String)
+              : [],
+          }))
+        : undefined;
+
+    // Build a map of image id -> src for variant image cross-referencing
+    const imageIdMap = new Map<string, string>();
+    for (const img of images) {
+      const imgId = str(img.id);
+      const imgSrc = str(img.src);
+      if (imgId && imgSrc) {
+        imageIdMap.set(imgId, imgSrc);
+      }
+    }
+
     products.push({
       source: "shopify",
       title: str(p.title),
@@ -353,6 +667,8 @@ async function detectShopify(
       imageUrl: str(
         images[0]?.src,
       ),
+      additionalImageUrls:
+        additionalImageUrls.length > 0 ? additionalImageUrls : undefined,
       price:
         str(firstVariant.price) ??
         str(p.price),
@@ -361,13 +677,25 @@ async function detectShopify(
       brand: str(p.vendor),
       sku: str(firstVariant.sku),
       gtin: str(firstVariant.barcode),
+      productId: str(p.id),
+      productType: str(p.product_type),
+      tags: tags && tags.length > 0 ? tags : undefined,
+      options: options && options.length > 0 ? options : undefined,
       variants:
         variants.length > 1
           ? variants.map((v) => ({
-              title: v.title,
-              price: v.price,
-              sku: v.sku,
-              available: v.available,
+              title: v.title as string | undefined,
+              price: v.price as string | undefined,
+              sku: v.sku as string | undefined,
+              available: v.available as boolean | undefined,
+              variantId: str(v.id),
+              imageUrl: v.image_id
+                ? imageIdMap.get(String(v.image_id))
+                : undefined,
+              option1: str(v.option1),
+              option2: str(v.option2),
+              option3: str(v.option3),
+              compareAtPrice: str(v.compare_at_price),
             }))
           : undefined,
       rawData: p,
@@ -528,10 +856,7 @@ function deduplicateProducts(
 // Main orchestrator
 // ---------------------------------------------------------------------------
 
-export async function discoverProducts(url: string): Promise<{
-  products: NormalizedProduct[];
-  feeds: DiscoveredFeed[];
-}> {
+export async function discoverSiteData(url: string): Promise<SiteData> {
   const allProducts: NormalizedProduct[] = [];
   const allFeeds: DiscoveredFeed[] = [];
 
@@ -579,8 +904,11 @@ export async function discoverProducts(url: string): Promise<{
     })(),
   ]);
 
-  // Step 3: Collect results from all strategies
-  for (const result of strategies) {
+  // Step 3: Collect results from all strategies and determine if Shopify
+  let isShopify = false;
+
+  for (let i = 0; i < strategies.length; i++) {
+    const result = strategies[i];
     if (result.status === "rejected") {
       console.error("Crawler strategy failed:", result.reason);
       continue;
@@ -591,9 +919,21 @@ export async function discoverProducts(url: string): Promise<{
 
     if ("products" in value && Array.isArray(value.products)) {
       allProducts.push(...value.products);
+      // Strategy index 2 is Shopify detection
+      if (i === 2 && value.products.length > 0) {
+        isShopify = true;
+      }
     }
     if ("feed" in value && value.feed) {
       allFeeds.push(value.feed as DiscoveredFeed);
+      // Also check the feed type as a signal
+      if (
+        i === 2 &&
+        value.feed &&
+        (value.feed as DiscoveredFeed).type === "shopify"
+      ) {
+        isShopify = true;
+      }
     }
   }
 
@@ -601,8 +941,15 @@ export async function discoverProducts(url: string): Promise<{
   const unique = deduplicateProducts(allProducts);
   const capped = unique.slice(0, MAX_PRODUCTS);
 
+  // Step 5: Extract store-level metadata (runs after strategies so we know isShopify)
+  const storeMeta = await extractStoreMeta(homepageHtml, url, isShopify);
+
   return {
     products: capped,
     feeds: allFeeds,
+    storeMeta,
   };
 }
+
+/** Backward-compatible alias */
+export const discoverProducts = discoverSiteData;

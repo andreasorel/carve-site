@@ -11,8 +11,10 @@ interface ScoreProgressProps {
 const STAGES: { label: string; maps: PipelineStage[] }[] = [
   { label: "Connecting to site", maps: ["connecting", "fetching_homepage"] },
   { label: "Discovering product feeds", maps: ["discovering_feeds"] },
+  { label: "Extracting store metadata", maps: ["extracting_store_meta"] },
   { label: "Sampling product catalog", maps: ["sampling_products"] },
-  { label: "Analyzing ACP compliance", maps: ["analyzing_acp"] },
+  { label: "Scoring against ACP fields", maps: ["scoring_fields"] },
+  { label: "AI analysis & commentary", maps: ["analyzing_acp"] },
   { label: "Generating scorecard", maps: ["generating_scorecard"] },
 ];
 

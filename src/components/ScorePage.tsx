@@ -23,10 +23,10 @@ export default function ScorePage() {
     setMessage("Connecting to your site\u2026");
 
     try {
-      // --- Phase 1: Fetch site data ---
+      // --- Phase 1: Fetch site data + store metadata ---
       await delay(500);
       setStage("fetching_homepage");
-      setProgress(15);
+      setProgress(12);
       setMessage("Fetching homepage\u2026");
 
       const phase1Res = await fetch("/api/score", {
@@ -42,23 +42,33 @@ export default function ScorePage() {
         );
       }
 
-      const { products, feeds, url: normalizedUrl } = await phase1Res.json();
+      const { products, feeds, storeMeta, url: normalizedUrl } = await phase1Res.json();
 
       await delay(400);
       setStage("discovering_feeds");
-      setProgress(35);
+      setProgress(28);
       setMessage("Discovering product feeds\u2026");
 
-      await delay(600);
+      await delay(400);
+      setStage("extracting_store_meta");
+      setProgress(38);
+      setMessage("Extracting store metadata\u2026");
+
+      await delay(500);
       setStage("sampling_products");
-      setProgress(50);
+      setProgress(48);
       setMessage(`Found ${products.length} products\u2026`);
 
-      // --- Phase 2: Analyze ---
-      await delay(500);
+      // --- Phase 2: Field mapping + scoring + AI commentary ---
+      await delay(400);
+      setStage("scoring_fields");
+      setProgress(58);
+      setMessage("Scoring against ACP fields\u2026");
+
+      await delay(300);
       setStage("analyzing_acp");
-      setProgress(65);
-      setMessage("Analyzing against ACP specification\u2026");
+      setProgress(68);
+      setMessage("AI analysis & commentary\u2026");
 
       const phase2Res = await fetch("/api/score/analyze", {
         method: "POST",
@@ -67,6 +77,7 @@ export default function ScorePage() {
           url: normalizedUrl,
           products,
           feeds,
+          storeMeta,
         }),
       });
 
@@ -79,7 +90,7 @@ export default function ScorePage() {
 
       // Midway progress update while awaiting parse
       setStage("generating_scorecard");
-      setProgress(85);
+      setProgress(88);
       setMessage("Generating your scorecard\u2026");
 
       const { scorecard: result } = await phase2Res.json();

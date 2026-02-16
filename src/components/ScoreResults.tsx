@@ -1,6 +1,7 @@
 "use client";
 
-import type { Scorecard, DimensionScore } from "@/lib/types";
+import { useState } from "react";
+import type { Scorecard, DimensionScore, FieldAudit } from "@/lib/types";
 
 interface ScoreResultsProps {
   scorecard: Scorecard;
@@ -19,7 +20,7 @@ const DIMENSION_KEYS: (keyof Scorecard["dimensions"])[] = [
 const DIMENSION_LABELS: Record<keyof Scorecard["dimensions"], string> = {
   contentCompleteness: "Content Completeness",
   variantHandling: "Variant Handling",
-  sellerIntegrity: "Seller Integrity",
+  sellerIntegrity: "Seller & Policy Integrity",
   eligibilityFlags: "Eligibility Flags",
   contentQuality: "Content Quality",
   enrichment: "Enrichment",
@@ -41,6 +42,36 @@ function gradeColor(grade: DimensionScore["grade"]): string {
   }
 }
 
+function statusIcon(status: FieldAudit["status"]): string {
+  switch (status) {
+    case "present":
+      return "\u2713";
+    case "warn":
+      return "\u26A0";
+    case "partial":
+      return "\u25D0";
+    case "missing":
+      return "\u2717";
+    default:
+      return "?";
+  }
+}
+
+function statusColor(status: FieldAudit["status"]): string {
+  switch (status) {
+    case "present":
+      return "text-accent";
+    case "warn":
+      return "text-ink-muted";
+    case "partial":
+      return "text-ink-muted";
+    case "missing":
+      return "text-ink-faint";
+    default:
+      return "text-ink";
+  }
+}
+
 function formatDate(iso: string): string {
   try {
     const d = new Date(iso);
@@ -57,10 +88,93 @@ function formatDate(iso: string): string {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Field Breakdown sub-component
+// ---------------------------------------------------------------------------
+
+function FieldBreakdown({ fields }: { fields: FieldAudit[] }) {
+  if (!fields || fields.length === 0) return null;
+
+  const missingFields = fields.filter(
+    (f) => f.status === "missing" || f.status === "partial" || f.status === "warn"
+  );
+
+  return (
+    <div className="mt-3">
+      {/* Field table */}
+      <div className="border-t border-rule/50 pt-2">
+        <table className="w-full">
+          <tbody>
+            {fields.map((field) => (
+              <tr key={field.fieldName} className="border-b border-rule/30 last:border-0">
+                <td className="py-1 pr-2">
+                  <span className={`font-mono text-sm ${statusColor(field.status)}`}>
+                    {statusIcon(field.status)}
+                  </span>
+                </td>
+                <td className="py-1 pr-3">
+                  <span className="font-mono text-xs text-ink">
+                    {field.fieldName}
+                  </span>
+                  {field.qualityNote && (
+                    <span className="font-mono text-xs text-ink-faint ml-1">
+                      &mdash; {field.qualityNote}
+                    </span>
+                  )}
+                </td>
+                <td className="py-1 text-right">
+                  <span className="font-mono text-xs text-ink-muted">
+                    {field.coverage}%
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Fix hints for missing/warn fields */}
+      {missingFields.length > 0 && (
+        <div className="mt-2 space-y-1">
+          {missingFields
+            .filter((f) => f.fixHint)
+            .map((f) => (
+              <div key={f.fieldName} className="font-mono text-xs text-accent leading-snug">
+                <span className="mr-1">&rarr;</span>
+                <span className="text-ink-muted">{f.fieldName}:</span>{" "}
+                {f.fixHint}
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
 export default function ScoreResults({
   scorecard,
   onReset,
 }: ScoreResultsProps) {
+  const [expandedDimensions, setExpandedDimensions] = useState<Set<string>>(
+    new Set()
+  );
+
+  function toggleDimension(key: string) {
+    setExpandedDimensions((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
   return (
     <div className="max-w-3xl mx-auto">
       {/* ===== Section 1: Headline & Overall Score ===== */}
@@ -95,6 +209,14 @@ export default function ScoreResults({
           </p>
         </div>
 
+        {/* Context banner */}
+        <div className="border border-rule/50 px-4 py-2 mb-4">
+          <p className="font-mono text-xs text-ink-faint italic text-center">
+            Scores computed deterministically from crawled data against the Agent
+            Commerce Protocol. AI provides editorial commentary only.
+          </p>
+        </div>
+
         {/* Thin rule */}
         <div className="border-t border-rule" />
       </div>
@@ -108,6 +230,9 @@ export default function ScoreResults({
         <div className="grid md:grid-cols-2 gap-4">
           {DIMENSION_KEYS.map((key) => {
             const dim = scorecard.dimensions[key];
+            const isExpanded = expandedDimensions.has(key);
+            const hasFields = dim.fields && dim.fields.length > 0;
+
             return (
               <div key={key} className="border border-rule p-4">
                 {/* Dimension name */}
@@ -130,7 +255,11 @@ export default function ScoreResults({
                   <span className="font-mono text-sm text-ink">
                     {dim.score}/100
                   </span>
-                  <span className={`font-mono text-sm font-medium ${gradeColor(dim.grade)}`}>
+                  <span
+                    className={`font-mono text-sm font-medium ${gradeColor(
+                      dim.grade
+                    )}`}
+                  >
                     {dim.grade}
                   </span>
                 </div>
@@ -139,7 +268,10 @@ export default function ScoreResults({
                 {dim.findings.length > 0 && (
                   <ul className="mb-2 space-y-1">
                     {dim.findings.map((f, i) => (
-                      <li key={i} className="font-mono text-xs text-ink-light leading-snug">
+                      <li
+                        key={i}
+                        className="font-mono text-xs text-ink-light leading-snug"
+                      >
                         <span className="text-ink-muted mr-1">&bull;</span>
                         {f}
                       </li>
@@ -151,12 +283,31 @@ export default function ScoreResults({
                 {dim.recommendations.length > 0 && (
                   <ul className="space-y-1">
                     {dim.recommendations.map((r, i) => (
-                      <li key={i} className="font-mono text-xs text-accent leading-snug">
+                      <li
+                        key={i}
+                        className="font-mono text-xs text-accent leading-snug"
+                      >
                         <span className="mr-1">&rarr;</span>
                         {r}
                       </li>
                     ))}
                   </ul>
+                )}
+
+                {/* Field breakdown toggle */}
+                {hasFields && (
+                  <>
+                    <button
+                      onClick={() => toggleDimension(key)}
+                      className="mt-3 font-mono text-xs text-ink-muted hover:text-ink transition-colors underline underline-offset-2"
+                    >
+                      {isExpanded
+                        ? "Hide field details"
+                        : `View ${dim.fields.length} ACP fields \u2192`}
+                    </button>
+
+                    {isExpanded && <FieldBreakdown fields={dim.fields} />}
+                  </>
                 )}
               </div>
             );
@@ -207,7 +358,56 @@ export default function ScoreResults({
         </div>
       </div>
 
-      {/* ===== Section 4: CTA ===== */}
+      {/* ===== Section 4: Store Metadata ===== */}
+      {scorecard.storeMeta && (
+        <div className="mt-8">
+          <div className="border-t border-rule pt-6">
+            <h4 className="font-ui text-xs uppercase tracking-wider text-ink-muted mb-3">
+              Store Metadata
+            </h4>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+              {scorecard.storeMeta.sellerName && (
+                <>
+                  <span className="font-mono text-xs text-ink-muted">Seller</span>
+                  <span className="font-mono text-xs text-ink">{scorecard.storeMeta.sellerName}</span>
+                </>
+              )}
+              {scorecard.storeMeta.platform && (
+                <>
+                  <span className="font-mono text-xs text-ink-muted">Platform</span>
+                  <span className="font-mono text-xs text-ink capitalize">{scorecard.storeMeta.platform}</span>
+                </>
+              )}
+              {scorecard.storeMeta.storeCountry && (
+                <>
+                  <span className="font-mono text-xs text-ink-muted">Country</span>
+                  <span className="font-mono text-xs text-ink">{scorecard.storeMeta.storeCountry}</span>
+                </>
+              )}
+              {scorecard.storeMeta.targetCountries.length > 0 && (
+                <>
+                  <span className="font-mono text-xs text-ink-muted">Target Markets</span>
+                  <span className="font-mono text-xs text-ink">{scorecard.storeMeta.targetCountries.join(", ")}</span>
+                </>
+              )}
+              <span className="font-mono text-xs text-ink-muted">Return Policy</span>
+              <span className="font-mono text-xs text-ink">
+                {scorecard.storeMeta.returnPolicy ? "\u2713 Found" : "\u2717 Not found"}
+              </span>
+              <span className="font-mono text-xs text-ink-muted">Privacy Policy</span>
+              <span className="font-mono text-xs text-ink">
+                {scorecard.storeMeta.privacyPolicyUrl ? "\u2713 Found" : "\u2717 Not found"}
+              </span>
+              <span className="font-mono text-xs text-ink-muted">Terms of Service</span>
+              <span className="font-mono text-xs text-ink">
+                {scorecard.storeMeta.termsOfServiceUrl ? "\u2713 Found" : "\u2717 Not found"}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Section 5: CTA ===== */}
       <div className="mt-8">
         <div className="ad-block">
           <div className="ad-block-inner">
