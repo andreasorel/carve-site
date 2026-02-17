@@ -1,0 +1,3 @@
+[submodule "carveleadgen"]
+	path = carveleadgen
+	url = https://github.com/wstortebecker/carveleadgen.git
