@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { XMLParser } from "fast-xml-parser";
 import type { NormalizedProduct, DiscoveredFeed, StoreMeta, SiteData } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -8,7 +9,7 @@ import type { NormalizedProduct, DiscoveredFeed, StoreMeta, SiteData } from "./t
 const USER_AGENT = "CarveBot/1.0 (+https://carve.co)";
 const FETCH_TIMEOUT_MS = 4_000;
 const MAX_REDIRECTS = 3;
-const MAX_PRODUCTS = 10;
+const MAX_PRODUCTS = 50;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -165,8 +166,8 @@ function normalizeJsonLdProduct(
         : undefined,
     reviews: reviews
       ? {
-          average: Number(reviews.ratingValue) || undefined,
-          count: Number(reviews.reviewCount ?? reviews.ratingCount) || undefined,
+          rating: Number(reviews.ratingValue) || 0,
+          count: Number(reviews.reviewCount ?? reviews.ratingCount) || 0,
         }
       : undefined,
     rawData: data,
@@ -592,25 +593,14 @@ async function discoverSitemap(
 // Strategy 3: Shopify /products.json detection
 // ---------------------------------------------------------------------------
 
-async function detectShopify(
+/**
+ * Parse a single page of Shopify /products.json into NormalizedProduct[].
+ */
+function parseShopifyProducts(
+  shopifyProducts: Array<Record<string, unknown>>,
   baseUrl: string,
-): Promise<{ products: NormalizedProduct[]; feed: DiscoveredFeed | null }> {
+): NormalizedProduct[] {
   const products: NormalizedProduct[] = [];
-  const feedUrl = `${baseUrl}/products.json?limit=10`;
-  const body = await fetchPage(feedUrl);
-  if (!body) return { products, feed: null };
-
-  const parsed = safeJsonParse(body);
-  if (
-    !parsed ||
-    typeof parsed !== "object" ||
-    !Array.isArray((parsed as Record<string, unknown>).products)
-  ) {
-    return { products, feed: null };
-  }
-
-  const shopifyProducts = (parsed as Record<string, unknown>)
-    .products as Array<Record<string, unknown>>;
 
   for (const p of shopifyProducts) {
     const variants = Array.isArray(p.variants)
@@ -702,13 +692,61 @@ async function detectShopify(
     });
   }
 
+  return products;
+}
+
+async function detectShopify(
+  baseUrl: string,
+): Promise<{ products: NormalizedProduct[]; feed: DiscoveredFeed | null }> {
+  const allProducts: NormalizedProduct[] = [];
+  const maxPages = 2;
+  const perPage = 50;
+  let feedUrl = `${baseUrl}/products.json?limit=${perPage}`;
+
+  for (let page = 1; page <= maxPages; page++) {
+    const pageUrl =
+      page === 1
+        ? `${baseUrl}/products.json?limit=${perPage}`
+        : `${baseUrl}/products.json?limit=${perPage}&page=${page}`;
+
+    const body = await fetchPage(pageUrl);
+    if (!body) break;
+
+    const parsed = safeJsonParse(body);
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      !Array.isArray((parsed as Record<string, unknown>).products)
+    ) {
+      break;
+    }
+
+    const shopifyProducts = (parsed as Record<string, unknown>)
+      .products as Array<Record<string, unknown>>;
+
+    if (shopifyProducts.length === 0) break;
+
+    if (page === 1) {
+      feedUrl = pageUrl;
+    }
+
+    allProducts.push(...parseShopifyProducts(shopifyProducts, baseUrl));
+
+    // If we got fewer than perPage, there are no more pages
+    if (shopifyProducts.length < perPage) break;
+  }
+
+  if (allProducts.length === 0) {
+    return { products: [], feed: null };
+  }
+
   const feed: DiscoveredFeed = {
     type: "shopify",
     url: feedUrl,
-    productCount: shopifyProducts.length,
+    productCount: allProducts.length,
   };
 
-  return { products, feed };
+  return { products: allProducts, feed };
 }
 
 // ---------------------------------------------------------------------------
@@ -830,6 +868,255 @@ function extractMicrodata(
 }
 
 // ---------------------------------------------------------------------------
+// Strategy 6: XML feed discovery (Google Shopping / RSS / Atom)
+// ---------------------------------------------------------------------------
+
+/**
+ * Helper: extract a field from an XML item using Google Shopping g: prefix
+ * fallback. Fields may appear as "g:title" or just "title".
+ */
+function xmlField(item: Record<string, unknown>, field: string): string | undefined {
+  return str(item[`g:${field}`]) ?? str(item[field]);
+}
+
+/**
+ * Normalise a single XML feed item into a NormalizedProduct.
+ */
+function normalizeXmlItem(
+  item: Record<string, unknown>,
+  baseUrl: string,
+): NormalizedProduct {
+  // additional_image_link can be a string or an array
+  const rawAdditional = item["g:additional_image_link"] ?? item["additional_image_link"];
+  const additionalImageUrls: string[] = [];
+  if (Array.isArray(rawAdditional)) {
+    for (const img of rawAdditional) {
+      const resolved = resolveUrl(img, baseUrl);
+      if (resolved) additionalImageUrls.push(resolved);
+    }
+  } else if (rawAdditional) {
+    const resolved = resolveUrl(rawAdditional, baseUrl);
+    if (resolved) additionalImageUrls.push(resolved);
+  }
+
+  // For Atom feeds, link may be an object with @_href
+  const rawLink = item["g:link"] ?? item["link"];
+  let linkUrl: string | undefined;
+  if (typeof rawLink === "object" && rawLink !== null && !Array.isArray(rawLink)) {
+    linkUrl = resolveUrl((rawLink as Record<string, unknown>)["@_href"], baseUrl);
+  } else {
+    linkUrl = resolveUrl(rawLink, baseUrl);
+  }
+
+  return {
+    source: "xml-feed",
+    structuredDataFormat: "xml",
+    itemId: xmlField(item, "id"),
+    title: xmlField(item, "title"),
+    description: xmlField(item, "description"),
+    url: linkUrl,
+    brand: xmlField(item, "brand"),
+    imageUrl: resolveUrl(
+      item["g:image_link"] ?? item["image_link"],
+      baseUrl,
+    ),
+    additionalImageUrls: additionalImageUrls.length > 0 ? additionalImageUrls : undefined,
+    availability: xmlField(item, "availability"),
+    price: xmlField(item, "price"),
+    salePrice: str(item["g:sale_price"]),
+    productId: str(item["g:item_group_id"]),
+    size: str(item["g:size"]),
+    material: str(item["g:material"]),
+    condition: xmlField(item, "condition"),
+    weight: str(item["g:shipping_weight"]),
+    category:
+      str(item["g:product_type"]) ?? str(item["g:google_product_category"]),
+    gtin: str(item["g:gtin"]),
+    rawData: item,
+  };
+}
+
+/**
+ * Discover XML product feeds by probing well-known endpoints and parsing
+ * RSS 2.0 / Atom feeds (including Google Shopping XML).
+ */
+async function discoverXmlFeeds(
+  baseUrl: string,
+): Promise<{ products: NormalizedProduct[]; feed: DiscoveredFeed | null }> {
+  const endpoints = [
+    "/feed.xml",
+    "/feed/products.xml",
+    "/products.xml",
+    "/google-shopping.xml",
+    "/feeds/products.xml",
+  ];
+
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: "@_",
+  });
+
+  const products: NormalizedProduct[] = [];
+  let feedUrl: string | null = null;
+
+  for (const endpoint of endpoints) {
+    if (products.length >= MAX_PRODUCTS) break;
+
+    const url = `${baseUrl}${endpoint}`;
+    const body = await fetchPage(url);
+    if (!body) continue;
+
+    let xml: Record<string, unknown>;
+    try {
+      xml = parser.parse(body) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+
+    // Try RSS 2.0 path: rss > channel > item
+    let items: unknown[] = [];
+    const rss = xml.rss as Record<string, unknown> | undefined;
+    if (rss) {
+      const channel = rss.channel as Record<string, unknown> | undefined;
+      if (channel) {
+        const rawItems = channel.item;
+        items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
+      }
+    }
+
+    // Try Atom path: feed > entry
+    if (items.length === 0) {
+      const feed = xml.feed as Record<string, unknown> | undefined;
+      if (feed) {
+        const rawEntries = feed.entry;
+        items = Array.isArray(rawEntries) ? rawEntries : rawEntries ? [rawEntries] : [];
+      }
+    }
+
+    if (items.length === 0) continue;
+
+    feedUrl = url;
+    for (const item of items) {
+      if (products.length >= MAX_PRODUCTS) break;
+      if (typeof item !== "object" || item === null) continue;
+      products.push(normalizeXmlItem(item as Record<string, unknown>, baseUrl));
+    }
+
+    // Stop after the first successful feed
+    break;
+  }
+
+  const feed: DiscoveredFeed | null = feedUrl
+    ? {
+        type: "xml-feed",
+        url: feedUrl,
+        productCount: products.length,
+      }
+    : null;
+
+  return { products, feed };
+}
+
+/**
+ * Look for XML feed links in the HTML <head> (RSS/Atom autodiscovery).
+ * If found, fetch and parse the first discovered feed.
+ */
+async function discoverXmlFeedsFromHtml(
+  html: string,
+  baseUrl: string,
+): Promise<{ products: NormalizedProduct[]; feed: DiscoveredFeed | null }> {
+  const $ = cheerio.load(html);
+  const feedUrls: string[] = [];
+
+  // Standard autodiscovery selectors
+  $(
+    'link[type="application/rss+xml"], link[type="application/atom+xml"], link[type="application/xml"], link[type="text/xml"]',
+  ).each((_, el) => {
+    const href = $(el).attr("href");
+    if (href) {
+      const resolved = resolveUrl(href, baseUrl);
+      if (resolved) feedUrls.push(resolved);
+    }
+  });
+
+  if (feedUrls.length === 0) return { products: [], feed: null };
+
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: "@_",
+  });
+
+  const products: NormalizedProduct[] = [];
+
+  for (const url of feedUrls) {
+    if (products.length >= MAX_PRODUCTS) break;
+
+    const body = await fetchPage(url);
+    if (!body) continue;
+
+    let xml: Record<string, unknown>;
+    try {
+      xml = parser.parse(body) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+
+    let items: unknown[] = [];
+
+    const rss = xml.rss as Record<string, unknown> | undefined;
+    if (rss) {
+      const channel = rss.channel as Record<string, unknown> | undefined;
+      if (channel) {
+        const rawItems = channel.item;
+        items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
+      }
+    }
+
+    if (items.length === 0) {
+      const feed = xml.feed as Record<string, unknown> | undefined;
+      if (feed) {
+        const rawEntries = feed.entry;
+        items = Array.isArray(rawEntries) ? rawEntries : rawEntries ? [rawEntries] : [];
+      }
+    }
+
+    if (items.length === 0) continue;
+
+    // Check if this looks like a product feed (at least one item has price or g:id)
+    const hasProductData = items.some((item) => {
+      if (typeof item !== "object" || item === null) return false;
+      const rec = item as Record<string, unknown>;
+      return (
+        rec["g:price"] !== undefined ||
+        rec["g:id"] !== undefined ||
+        rec["g:title"] !== undefined
+      );
+    });
+
+    if (!hasProductData) continue;
+
+    for (const item of items) {
+      if (products.length >= MAX_PRODUCTS) break;
+      if (typeof item !== "object" || item === null) continue;
+      products.push(normalizeXmlItem(item as Record<string, unknown>, baseUrl));
+    }
+
+    if (products.length > 0) {
+      return {
+        products,
+        feed: {
+          type: "xml-feed",
+          url,
+          productCount: products.length,
+        },
+      };
+    }
+  }
+
+  return { products: [], feed: null };
+}
+
+// ---------------------------------------------------------------------------
 // Deduplication
 // ---------------------------------------------------------------------------
 
@@ -902,10 +1189,22 @@ export async function discoverSiteData(url: string): Promise<SiteData> {
       if (!homepageHtml) return null;
       return extractMicrodata(homepageHtml, url);
     })(),
+
+    // Strategy 6: XML feed discovery (well-known endpoints)
+    (async () => {
+      return discoverXmlFeeds(url);
+    })(),
+
+    // Strategy 7: XML feeds discovered from HTML <link> tags
+    (async () => {
+      if (!homepageHtml) return null;
+      return discoverXmlFeedsFromHtml(homepageHtml, url);
+    })(),
   ]);
 
   // Step 3: Collect results from all strategies and determine if Shopify
   let isShopify = false;
+  const SHOPIFY_STRATEGY_INDEX = 2;
 
   for (let i = 0; i < strategies.length; i++) {
     const result = strategies[i];
@@ -919,16 +1218,14 @@ export async function discoverSiteData(url: string): Promise<SiteData> {
 
     if ("products" in value && Array.isArray(value.products)) {
       allProducts.push(...value.products);
-      // Strategy index 2 is Shopify detection
-      if (i === 2 && value.products.length > 0) {
+      if (i === SHOPIFY_STRATEGY_INDEX && value.products.length > 0) {
         isShopify = true;
       }
     }
     if ("feed" in value && value.feed) {
       allFeeds.push(value.feed as DiscoveredFeed);
-      // Also check the feed type as a signal
       if (
-        i === 2 &&
+        i === SHOPIFY_STRATEGY_INDEX &&
         value.feed &&
         (value.feed as DiscoveredFeed).type === "shopify"
       ) {

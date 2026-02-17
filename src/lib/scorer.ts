@@ -280,11 +280,23 @@ function scoreEnrichment(map: FieldAuditMap): DimensionScore {
     "condition",
     "gtin",
     "sale_price",
+    "review_count",
+    "star_rating",
+    "review_list",
+    "q_and_a",
+    "video_url",
+    "material",
+    "weight",
+    "dimensions",
+    "age_group",
+    "gender",
+    "category",
   ];
 
   const fields = fieldsForNames(map, fieldNames);
+  const total = fields.length > 0 ? fields.length : 1;
   const count = fields.filter(f => f.status !== "missing").length;
-  const score = Math.round((count / 6) * 100);
+  const score = Math.round((count / total) * 100);
 
   return {
     name: "Enrichment",

@@ -31,7 +31,7 @@ const normalizeAvailability = (v: string): string =>
   v.toLowerCase().replace(/^https?:\/\/schema\.org\//, "").replace(/_/g, "");
 
 // ---------------------------------------------------------------------------
-// Field extractors (31 total)
+// Field extractors (44 total)
 // ---------------------------------------------------------------------------
 
 const FIELD_EXTRACTORS: FieldExtractor[] = [
@@ -249,7 +249,7 @@ const FIELD_EXTRACTORS: FieldExtractor[] = [
   },
 
   // -------------------------------------------------------------------------
-  // Conditional fields (8)
+  // Conditional fields (9)
   // -------------------------------------------------------------------------
 
   // 18. variant_dict
@@ -336,7 +336,7 @@ const FIELD_EXTRACTORS: FieldExtractor[] = [
   },
 
   // -------------------------------------------------------------------------
-  // Recommended fields (6)
+  // Recommended fields (19)
   // -------------------------------------------------------------------------
 
   // 26. additional_image_urls
@@ -366,10 +366,10 @@ const FIELD_EXTRACTORS: FieldExtractor[] = [
     tier: "recommended",
     extract: (p) => {
       if (!p.reviews) return null;
-      const { average, count } = p.reviews;
-      if (!average && !count) return null;
+      const { rating, count } = p.reviews;
+      if (!rating && !count) return null;
       const parts: string[] = [];
-      if (average != null) parts.push(`${average}/5`);
+      if (rating != null) parts.push(`${rating}/5`);
       if (count != null) parts.push(`(${count} reviews)`);
       return parts.join(" ");
     },
@@ -403,6 +403,138 @@ const FIELD_EXTRACTORS: FieldExtractor[] = [
     fixHint:
       "Add itemCondition to your JSON-LD offers (NewCondition, RefurbishedCondition, UsedCondition)",
   },
+
+  // 32. review_count
+  {
+    acpField: "review_count",
+    tier: "recommended",
+    extract: (p) => {
+      if (p.reviewCount != null) return String(p.reviewCount);
+      if (p.reviews?.count != null) return String(p.reviews.count);
+      return null;
+    },
+    fixHint:
+      "Add AggregateRating with reviewCount to your JSON-LD",
+  },
+
+  // 33. star_rating
+  {
+    acpField: "star_rating",
+    tier: "recommended",
+    extract: (p) => {
+      if (p.starRating != null) return String(p.starRating);
+      if (p.reviews?.rating != null) return String(p.reviews.rating);
+      return null;
+    },
+    fixHint:
+      "Add AggregateRating with ratingValue to your JSON-LD",
+  },
+
+  // 34. review_list
+  {
+    acpField: "review_list",
+    tier: "recommended",
+    extract: (p) =>
+      p.reviewList && p.reviewList.length > 0
+        ? `${p.reviewList.length} reviews`
+        : null,
+    fixHint:
+      "Add individual Review schema objects to your JSON-LD or expose review content in your HTML",
+  },
+
+  // 35. q_and_a
+  {
+    acpField: "q_and_a",
+    tier: "recommended",
+    extract: (p) =>
+      p.qAndA && p.qAndA.length > 0
+        ? `${p.qAndA.length} Q&A pairs`
+        : null,
+    fixHint:
+      "Add FAQPage JSON-LD schema with Question/Answer pairs to your product pages",
+  },
+
+  // 36. video_url
+  {
+    acpField: "video_url",
+    tier: "recommended",
+    extract: (p) => p.videoUrl ?? null,
+    fixHint:
+      "Add a product video and reference it in your structured data",
+  },
+
+  // 37. size
+  {
+    acpField: "size",
+    tier: "conditional",
+    extract: (p) =>
+      p.size ?? p.variantDict?.Size ?? p.variantDict?.size ?? null,
+    fixHint:
+      "Include size information in your variant data or product attributes",
+  },
+
+  // 38. age_group
+  {
+    acpField: "age_group",
+    tier: "recommended",
+    extract: (p) => p.ageGroup ?? null,
+    fixHint:
+      "Add audience.suggestedMinAge/suggestedMaxAge to your JSON-LD Product schema",
+  },
+
+  // 39. gender
+  {
+    acpField: "gender",
+    tier: "recommended",
+    extract: (p) => p.gender ?? null,
+    fixHint:
+      "Add gender or audience.suggestedGender to your JSON-LD Product schema",
+  },
+
+  // 40. material
+  {
+    acpField: "material",
+    tier: "recommended",
+    extract: (p) => p.material ?? null,
+    fixHint:
+      "Add material property to your JSON-LD Product schema",
+  },
+
+  // 41. weight
+  {
+    acpField: "weight",
+    tier: "recommended",
+    extract: (p) => p.weight ?? null,
+    fixHint:
+      "Add weight property to your JSON-LD Product schema",
+  },
+
+  // 42. dimensions
+  {
+    acpField: "dimensions",
+    tier: "recommended",
+    extract: (p) => p.dimensions ?? null,
+    fixHint:
+      "Add width/height/depth properties to your JSON-LD Product schema",
+  },
+
+  // 43. shipping_details
+  {
+    acpField: "shipping_details",
+    tier: "recommended",
+    extract: (p, meta) => p.shippingDetails ?? meta.shippingDetails ?? null,
+    fixHint:
+      "Add shipping information to your product pages or structured data",
+  },
+
+  // 44. category
+  {
+    acpField: "category",
+    tier: "recommended",
+    extract: (p) => p.category ?? p.productType ?? null,
+    fixHint:
+      "Set product_type in your admin or include a category in your structured data",
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -417,6 +549,7 @@ const SELLER_LEVEL_FIELDS = new Set([
   "store_country",
   "privacy_policy_url",
   "terms_of_service_url",
+  "shipping_details",
 ]);
 
 // ---------------------------------------------------------------------------

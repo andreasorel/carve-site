@@ -199,7 +199,7 @@ export async function enrichScorecardWithAI(
 ): Promise<Scorecard> {
   try {
     const response = await getClient().messages.create({
-      model: "claude-3-haiku-20240307",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 2048,
       system: buildSystemPrompt(),
       messages: [
