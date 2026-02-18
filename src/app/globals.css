@@ -3,88 +3,139 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
   body {
-    @apply bg-paper text-ink font-body;
+    @apply bg-surface text-text font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background: rgba(194, 85, 58, 0.12);
+    color: #1A1917;
   }
 }
 
 @layer components {
-  /* Newspaper rules */
-  .rule-thick {
-    @apply border-t-[3px] border-ink;
+  /* ── Buttons ── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-7 py-3
+           bg-surface-inverse text-text-on-dark
+           font-sans text-[13px] font-medium tracking-wide rounded-sm
+           transition-all duration-200 hover:opacity-90 cursor-pointer;
   }
-  .rule-thin {
-    @apply border-t border-rule;
+  .btn-accent {
+    @apply inline-flex items-center justify-center px-7 py-3
+           bg-accent text-white
+           font-sans text-[13px] font-medium tracking-wide rounded-sm
+           transition-all duration-200 hover:bg-accent-hover cursor-pointer;
   }
-  .rule-thick-thin {
-    @apply border-t-[3px] border-ink relative;
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-7 py-3
+           border border-border text-text
+           font-sans text-[13px] font-medium tracking-wide rounded-sm
+           bg-transparent transition-all duration-200
+           hover:border-text cursor-pointer;
   }
-  .rule-thick-thin::after {
-    content: "";
-    @apply absolute left-0 right-0 border-t border-rule;
-    bottom: -4px;
-  }
-  .rule-thin-thick-thin {
-    @apply border-t border-b border-rule relative;
-    padding-top: 4px;
-    padding-bottom: 4px;
-  }
-  .rule-thin-thick-thin::before {
-    content: "";
-    @apply absolute left-0 right-0 border-t-[3px] border-ink;
-    top: 3px;
+  .btn-ghost {
+    @apply inline-flex items-center gap-1.5 text-text-secondary font-sans text-[13px]
+           hover:text-text transition-colors cursor-pointer;
   }
 
-  /* Drop cap */
+  /* ── Cards ── */
+  .card {
+    @apply bg-surface-elevated p-6 md:p-8;
+    border-radius: 6px;
+  }
+  .card-elevated {
+    @apply bg-surface-elevated shadow-card p-6 md:p-8;
+    border-radius: 6px;
+  }
+  .card-dark {
+    @apply bg-surface-inverse p-6 md:p-8;
+    border-radius: 6px;
+  }
+
+  /* ── Section spacing — generous, editorial ── */
+  .section {
+    @apply py-24 md:py-32;
+  }
+  .section-alt {
+    @apply py-24 md:py-32 bg-surface-subtle;
+  }
+
+  /* ── Section typography ── */
+  .section-label {
+    @apply font-sans text-[11px] font-medium uppercase tracking-[0.15em] text-text-tertiary mb-4;
+  }
+  .section-title {
+    @apply font-display font-normal text-text leading-[1.1];
+    font-size: clamp(28px, 4vw, 42px);
+    letter-spacing: -0.025em;
+  }
+  .section-subtitle {
+    @apply font-sans text-base text-text-secondary mt-5 leading-relaxed;
+  }
+
+  /* ── Hero grain backdrop ── */
+  .hero-grain {
+    @apply relative overflow-hidden;
+    background: linear-gradient(160deg, #F5F0EB 0%, #FAFAF8 40%, #F2EDE8 100%);
+  }
+  .hero-grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .hero-grain > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Utility ── */
+  .step-number {
+    @apply font-mono text-sm text-accent;
+  }
+
+  /* ── Legacy compat classes (used by sub-pages) ── */
+  .btn-newspaper {
+    @apply btn-secondary;
+  }
+  .btn-newspaper-accent {
+    @apply btn-accent;
+  }
+  .ad-block {
+    @apply bg-surface-subtle border border-border-strong p-1 rounded-sm;
+  }
+  .ad-block-inner {
+    @apply border border-border p-6 md:p-8 text-center rounded-sm;
+  }
+  .ornament {
+    @apply text-center text-text-tertiary tracking-[0.5em] text-sm py-6;
+  }
   .drop-cap::first-letter {
-    @apply float-left font-headline font-black text-ink;
+    @apply float-left font-display font-black text-text;
     font-size: 4.5em;
     line-height: 0.8;
     padding-right: 0.08em;
     margin-top: 0.05em;
   }
-
-  /* Justified text */
   .text-justify-newspaper {
     text-align: justify;
     hyphens: auto;
     -webkit-hyphens: auto;
   }
-
-  /* Column rule */
   .column-rule {
-    @apply border-l border-rule pl-6 md:pl-8;
+    @apply border-l border-border pl-6 md:pl-8;
   }
-
-  /* Newspaper button */
-  .btn-newspaper {
-    @apply inline-block border border-ink px-5 py-2.5 font-ui text-sm tracking-wider uppercase
-           text-ink bg-transparent transition-all duration-200 hover:bg-ink hover:text-paper
-           cursor-pointer;
-    border-radius: 1px;
-  }
-  .btn-newspaper-accent {
-    @apply inline-block border border-accent px-5 py-2.5 font-ui text-sm tracking-wider uppercase
-           text-accent bg-transparent transition-all duration-200 hover:bg-accent hover:text-paper
-           cursor-pointer;
-    border-radius: 1px;
-  }
-
-  /* Ad block */
-  .ad-block {
-    @apply bg-ad-bg border-2 border-ad-border p-1;
-  }
-  .ad-block-inner {
-    @apply border border-ad-border p-6 md:p-8 text-center;
-  }
-
-  /* Ornamental divider */
-  .ornament {
-    @apply text-center text-ink-faint tracking-[0.5em] text-sm py-6;
-  }
-
-  /* Pull quote */
   .pull-quote {
-    @apply border-l-2 border-r-2 border-accent px-6 py-4 my-8 text-center font-headline italic text-xl md:text-2xl text-ink-light;
+    @apply border-l-2 border-r-2 border-accent px-6 py-4 my-8 text-center font-display italic text-xl md:text-2xl text-text-secondary;
   }
 }

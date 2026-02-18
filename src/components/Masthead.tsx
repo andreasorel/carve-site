@@ -1,6 +1,8 @@
 "use client";
 
-type Page = "home" | "services" | "insight" | "score";
+import { useState } from "react";
+
+type Page = "home" | "commerce" | "pricing" | "insight" | "started" | "score";
 
 export default function Masthead({
   currentPage,
@@ -9,90 +11,76 @@ export default function Masthead({
   currentPage: Page;
   onNavigate: (page: Page) => void;
 }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   const tabs: { label: string; page: Page }[] = [
-    { label: "Home", page: "home" },
-    { label: "Services", page: "services" },
-    { label: "Insight", page: "insight" },
+    { label: "Agentic Commerce", page: "commerce" },
+    { label: "Pricing", page: "pricing" },
+    { label: "Memo", page: "insight" },
+    { label: "Get Started", page: "started" },
   ];
 
   return (
-    <header className="max-w-5xl mx-auto px-4">
-      {/* Top bar */}
-      <div className="flex items-center justify-between py-3 text-xs font-ui tracking-wider">
-        <span className="text-ink-muted uppercase">Est. 2026 &middot; Oslo</span>
-        <div className="flex items-center gap-6">
-          <nav className="hidden sm:flex items-center gap-5">
-            {tabs.map((tab) => (
-              <button
-                key={tab.page}
-                onClick={() => onNavigate(tab.page)}
-                className={`uppercase tracking-widest transition-colors ${
-                  currentPage === tab.page
-                    ? "text-ink font-bold"
-                    : "text-ink-muted hover:text-ink"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-          <button
-            onClick={() => onNavigate("score")}
-            className="btn-newspaper text-xs py-1.5 px-4"
-          >
-            Get Started
-          </button>
-        </div>
-      </div>
-
-      {/* Thick-thin double rule */}
-      <div className="border-t-[3px] border-ink" />
-      <div className="border-t border-rule mt-1" />
-
-      {/* Mobile nav */}
-      <nav className="sm:hidden flex items-center justify-center gap-5 py-2 text-xs font-ui">
-        {tabs.map((tab) => (
-          <button
-            key={tab.page}
-            onClick={() => onNavigate(tab.page)}
-            className={`uppercase tracking-widest transition-colors ${
-              currentPage === tab.page
-                ? "text-ink font-bold"
-                : "text-ink-muted hover:text-ink"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-
-      {/* Masthead title */}
-      <div className="text-center py-4 md:py-6">
-        <h1
-          className="font-headline font-black text-ink leading-none"
-          style={{ fontSize: "clamp(3.5rem, 10vw, 6rem)" }}
+    <header className="sticky top-0 z-50 bg-surface/90 backdrop-blur-lg">
+      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+        <button
+          onClick={() => onNavigate("home")}
+          className="font-display text-lg text-text tracking-tight cursor-pointer"
         >
           Carve
-        </h1>
-        <p className="font-ui text-xs md:text-sm tracking-[0.35em] uppercase text-ink-muted mt-2">
-          Agentic Commerce Partners
-        </p>
+        </button>
+
+        <nav className="hidden md:flex items-center gap-7">
+          {tabs.map((tab) => (
+            <button
+              key={tab.page}
+              onClick={() => onNavigate(tab.page)}
+              className={`font-sans text-[13px] transition-colors cursor-pointer ${
+                currentPage === tab.page
+                  ? "text-text"
+                  : "text-text-tertiary hover:text-text"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+
+        <button
+          className="md:hidden text-text-secondary hover:text-text cursor-pointer p-1"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label="Toggle menu"
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {mobileOpen ? (
+              <path d="M4 4l10 10M14 4L4 14" />
+            ) : (
+              <path d="M2 5.5h14M2 9h14M2 12.5h14" />
+            )}
+          </svg>
+        </button>
       </div>
 
-      {/* Thin-thick-thin triple rule */}
-      <div className="border-t border-rule" />
-      <div className="border-t-[3px] border-ink mt-1" />
-      <div className="border-t border-rule mt-1" />
-
-      {/* Dateline */}
-      <div className="flex items-center justify-between py-2 text-xs font-mono text-ink-muted">
-        <span>Vol. I &middot; No. 1</span>
-        <span className="hidden sm:inline">Sunday, February 16, 2026</span>
-        <span className="sm:hidden">Feb 16, 2026</span>
-        <span>Price: Your Attention</span>
-      </div>
-
-      <div className="border-t border-rule" />
+      {mobileOpen && (
+        <nav className="md:hidden bg-surface px-6 py-5 space-y-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.page}
+              onClick={() => {
+                onNavigate(tab.page);
+                setMobileOpen(false);
+              }}
+              className={`block w-full text-left font-sans text-[13px] py-2.5 transition-colors cursor-pointer ${
+                currentPage === tab.page
+                  ? "text-text"
+                  : "text-text-tertiary hover:text-text"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      )}
     </header>
   );
 }

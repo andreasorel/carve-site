@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, DM_Sans, DM_Mono } from "next/font/google";
+import { Playfair_Display, DM_Sans, DM_Mono, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -23,23 +23,30 @@ const dmMono = DM_Mono({
   display: "swap",
 });
 
+const jetbrains = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains",
+  weight: ["400", "500"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Carve | Agentic Commerce Partners",
+  title: "Carve | Agentic Commerce",
   description:
-    "Carve partners with ambitious retailers to win agentic commerce. Free Agent Readiness Score. AI-powered feed optimization. Forward-deployed commerce engineers.",
+    "Making your products visible and purchasable through AI shopping agents. Connection, optimization, and performance for the agentic commerce era.",
   openGraph: {
-    title: "Carve | Agentic Commerce Partners",
+    title: "Carve | Agentic Commerce",
     description:
-      "Carve partners with ambitious retailers to win agentic commerce. Free Agent Readiness Score. AI-powered feed optimization. Forward-deployed commerce engineers.",
+      "Making your products visible and purchasable through AI shopping agents. Connection, optimization, and performance for the agentic commerce era.",
     type: "website",
     locale: "en_US",
     siteName: "Carve",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Carve | Agentic Commerce Partners",
+    title: "Carve | Agentic Commerce",
     description:
-      "Carve partners with ambitious retailers to win agentic commerce. Free Agent Readiness Score. AI-powered feed optimization. Forward-deployed commerce engineers.",
+      "Making your products visible and purchasable through AI shopping agents. Connection, optimization, and performance for the agentic commerce era.",
   },
 };
 
@@ -51,7 +58,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${playfair.variable} ${dmSans.variable} ${dmMono.variable} antialiased`}
+        className={`${playfair.variable} ${dmSans.variable} ${dmMono.variable} ${jetbrains.variable} antialiased`}
       >
         {children}
       </body>

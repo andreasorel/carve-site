@@ -23,7 +23,6 @@ export default function ScorePage() {
     setMessage("Connecting to your site\u2026");
 
     try {
-      // --- Phase 1: Fetch site data + store metadata ---
       await delay(500);
       setStage("fetching_homepage");
       setProgress(12);
@@ -59,7 +58,6 @@ export default function ScorePage() {
       setProgress(48);
       setMessage(`Found ${products.length} products\u2026`);
 
-      // --- Phase 2: Field mapping + scoring + AI commentary ---
       await delay(400);
       setStage("scoring_fields");
       setProgress(58);
@@ -88,7 +86,6 @@ export default function ScorePage() {
         );
       }
 
-      // Midway progress update while awaiting parse
       setStage("generating_scorecard");
       setProgress(88);
       setMessage("Generating your scorecard\u2026");
@@ -119,24 +116,17 @@ export default function ScorePage() {
   return (
     <div className="max-w-5xl mx-auto px-4">
       {/* Page header */}
-      <div className="text-center py-8 md:py-10">
-        <p className="font-ui text-xs tracking-widest uppercase text-ink-muted mb-2">
-          Free Diagnostic
-        </p>
-        <h1
-          className="font-headline font-bold text-ink leading-tight"
-          style={{ fontSize: "clamp(1.8rem, 5vw, 3rem)" }}
-        >
+      <div className="text-center py-12 md:py-16">
+        <p className="section-label">Free Diagnostic</p>
+        <h1 className="section-title mx-auto">
           Agent Readiness Score
         </h1>
-        <p className="font-headline italic text-ink-light text-base md:text-lg mt-2 max-w-xl mx-auto">
+        <p className="section-subtitle mx-auto max-w-xl">
           See how visible your products are to AI shopping agents.
         </p>
       </div>
 
-      {/* Thick-thin rule */}
-      <div className="border-t-[3px] border-ink" />
-      <div className="border-t border-rule mt-1 mb-8" />
+      <div className="border-t border-border mb-8" />
 
       {/* State-based content */}
       {state === "form" && <ScoreForm onSubmit={handleSubmit} />}
@@ -151,25 +141,24 @@ export default function ScorePage() {
 
       {state === "error" && (
         <div className="max-w-lg mx-auto text-center">
-          <div className="border border-rule p-6 md:p-8">
-            <div className="font-ui text-xs uppercase tracking-wider text-accent mb-3">
+          <div className="card-elevated">
+            <p className="font-sans text-xs font-medium uppercase tracking-[0.1em] text-accent mb-3">
               Analysis Error
-            </div>
-            <p className="font-headline font-bold text-lg text-ink mb-3">
+            </p>
+            <p className="font-display font-medium text-lg text-text mb-3">
               Something went wrong.
             </p>
-            <p className="font-body text-sm text-ink-light mb-6 leading-relaxed">
+            <p className="font-sans text-sm text-text-secondary mb-6 leading-relaxed">
               {errorMessage}
             </p>
-            <button onClick={handleReset} className="btn-newspaper">
+            <button onClick={handleReset} className="btn-secondary">
               Try Again
             </button>
           </div>
         </div>
       )}
 
-      {/* Bottom ornament */}
-      <div className="ornament">{"\u2726 \u2726 \u2726"}</div>
+      <div className="py-8" />
     </div>
   );
 }

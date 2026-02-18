@@ -36,7 +36,7 @@ export default function ScoreProgress({
   return (
     <div className="max-w-lg mx-auto">
       {/* Progress bar */}
-      <div className="border border-rule overflow-hidden" style={{ borderRadius: "1px" }}>
+      <div className="border border-border rounded-sm overflow-hidden">
         <div
           className="h-[3px] bg-accent transition-all duration-700 ease-out"
           style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
@@ -51,38 +51,35 @@ export default function ScoreProgress({
 
           return (
             <div key={i} className="flex items-center gap-3">
-              {/* Status dot */}
               <div className="flex-shrink-0">
                 {isCompleted ? (
                   <div className="w-2 h-2 rounded-full bg-accent" />
                 ) : isActive ? (
-                  <div className="w-2 h-2 rounded-full bg-ink animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-text animate-pulse" />
                 ) : (
-                  <div className="w-2 h-2 rounded-full border border-rule bg-transparent" />
+                  <div className="w-2 h-2 rounded-full border border-border bg-transparent" />
                 )}
               </div>
 
-              {/* Stage number */}
               <span
                 className={`font-mono text-xs w-4 ${
                   isCompleted
                     ? "text-accent"
                     : isActive
-                    ? "text-ink"
-                    : "text-ink-faint"
+                    ? "text-text"
+                    : "text-text-tertiary"
                 }`}
               >
                 {i + 1}
               </span>
 
-              {/* Stage description */}
               <span
-                className={`font-ui text-sm ${
+                className={`font-sans text-sm ${
                   isCompleted
-                    ? "text-ink-muted line-through"
+                    ? "text-text-tertiary line-through"
                     : isActive
-                    ? "text-ink font-medium"
-                    : "text-ink-faint"
+                    ? "text-text font-medium"
+                    : "text-text-tertiary"
                 }`}
               >
                 {s.label}
@@ -94,7 +91,7 @@ export default function ScoreProgress({
 
       {/* Current message */}
       <div className="mt-8 border-l-2 border-r-2 border-accent px-6 py-4 text-center">
-        <p className="font-headline italic text-ink-light text-base md:text-lg">
+        <p className="font-display italic text-text-secondary text-base md:text-lg">
           {message}
         </p>
       </div>

@@ -40,7 +40,7 @@ function gradeColor(grade: DimensionScore["grade"]): string {
     case "A":
       return "text-emerald-700";
     case "B":
-      return "text-ink";
+      return "text-text";
     case "C":
       return "text-amber-700";
     case "D":
@@ -48,7 +48,7 @@ function gradeColor(grade: DimensionScore["grade"]): string {
     case "F":
       return "text-accent";
     default:
-      return "text-ink";
+      return "text-text";
   }
 }
 
@@ -57,7 +57,7 @@ function gradeBg(grade: DimensionScore["grade"]): string {
     case "A":
       return "bg-emerald-700/10";
     case "B":
-      return "bg-ink/5";
+      return "bg-text/5";
     case "C":
       return "bg-amber-700/10";
     case "D":
@@ -65,13 +65,13 @@ function gradeBg(grade: DimensionScore["grade"]): string {
     case "F":
       return "bg-accent/10";
     default:
-      return "bg-ink/5";
+      return "bg-text/5";
   }
 }
 
 function scoreBarColor(score: number): string {
   if (score >= 80) return "bg-emerald-700";
-  if (score >= 60) return "bg-ink-muted";
+  if (score >= 60) return "bg-text-secondary";
   if (score >= 40) return "bg-amber-700";
   return "bg-accent";
 }
@@ -102,7 +102,7 @@ function statusColor(status: FieldAudit["status"]): string {
     case "missing":
       return "text-accent";
     default:
-      return "text-ink";
+      return "text-text";
   }
 }
 
@@ -177,21 +177,20 @@ function FieldBreakdown({ fields }: { fields: FieldAudit[] }) {
 
   return (
     <div className="mt-4 mx-4 mb-4">
-      {/* Field table */}
-      <div className="border border-rule/40 overflow-hidden" style={{ borderRadius: "2px" }}>
+      <div className="border border-border/40 rounded-sm overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="bg-ink/[0.03]">
-              <th className="py-2 px-3 text-left font-ui text-[10px] uppercase tracking-wider text-ink-muted">
+            <tr className="bg-text/[0.03]">
+              <th className="py-2 px-3 text-left font-sans text-[10px] uppercase tracking-wider text-text-tertiary">
                 Status
               </th>
-              <th className="py-2 px-3 text-left font-ui text-[10px] uppercase tracking-wider text-ink-muted">
+              <th className="py-2 px-3 text-left font-sans text-[10px] uppercase tracking-wider text-text-tertiary">
                 ACP Field
               </th>
-              <th className="py-2 px-3 text-left font-ui text-[10px] uppercase tracking-wider text-ink-muted hidden sm:table-cell">
+              <th className="py-2 px-3 text-left font-sans text-[10px] uppercase tracking-wider text-text-tertiary hidden sm:table-cell">
                 Tier
               </th>
-              <th className="py-2 px-3 text-right font-ui text-[10px] uppercase tracking-wider text-ink-muted">
+              <th className="py-2 px-3 text-right font-sans text-[10px] uppercase tracking-wider text-text-tertiary">
                 Coverage
               </th>
             </tr>
@@ -200,7 +199,7 @@ function FieldBreakdown({ fields }: { fields: FieldAudit[] }) {
             {fields.map((field) => (
               <tr
                 key={field.fieldName}
-                className="border-t border-rule/30 hover:bg-ink/[0.02] transition-colors"
+                className="border-t border-border/30 hover:bg-text/[0.02] transition-colors"
               >
                 <td className="py-1.5 px-3">
                   <span className={`font-mono text-sm ${statusColor(field.status)}`}>
@@ -208,11 +207,11 @@ function FieldBreakdown({ fields }: { fields: FieldAudit[] }) {
                   </span>
                 </td>
                 <td className="py-1.5 px-3">
-                  <span className="font-mono text-xs text-ink">
+                  <span className="font-mono text-xs text-text">
                     {field.fieldName}
                   </span>
                   {field.qualityNote && (
-                    <span className="font-mono text-[10px] text-ink-faint ml-1.5">
+                    <span className="font-mono text-[10px] text-text-tertiary ml-1.5">
                       — {field.qualityNote}
                     </span>
                   )}
@@ -224,7 +223,7 @@ function FieldBreakdown({ fields }: { fields: FieldAudit[] }) {
                         ? "text-accent"
                         : field.tier === "conditional"
                           ? "text-amber-700"
-                          : "text-ink-faint"
+                          : "text-text-tertiary"
                     }`}
                   >
                     {field.tier}
@@ -232,19 +231,19 @@ function FieldBreakdown({ fields }: { fields: FieldAudit[] }) {
                 </td>
                 <td className="py-1.5 px-3 text-right">
                   <div className="inline-flex items-center gap-2">
-                    <div className="w-12 h-1 bg-rule/30 hidden sm:block">
+                    <div className="w-12 h-1 bg-border/30 hidden sm:block">
                       <div
                         className={`h-1 ${
                           field.coverage === 100
                             ? "bg-emerald-700"
                             : field.coverage > 0
                               ? "bg-amber-700"
-                              : "bg-rule/50"
+                              : "bg-border/50"
                         }`}
                         style={{ width: `${field.coverage}%` }}
                       />
                     </div>
-                    <span className="font-mono text-xs text-ink-muted w-8 text-right">
+                    <span className="font-mono text-xs text-text-secondary w-8 text-right">
                       {field.coverage}%
                     </span>
                   </div>
@@ -255,7 +254,6 @@ function FieldBreakdown({ fields }: { fields: FieldAudit[] }) {
         </table>
       </div>
 
-      {/* Fix hints */}
       {missingFields.length > 0 && (
         <div className="mt-3 space-y-1.5 px-1">
           {missingFields
@@ -268,12 +266,12 @@ function FieldBreakdown({ fields }: { fields: FieldAudit[] }) {
               >
                 <span className="flex-shrink-0">&rarr;</span>
                 <span>
-                  <span className="text-ink-muted">{f.fieldName}:</span> {f.fixHint}
+                  <span className="text-text-secondary">{f.fieldName}:</span> {f.fixHint}
                 </span>
               </div>
             ))}
           {missingFields.filter((f) => f.fixHint).length > 5 && (
-            <p className="font-mono text-[10px] text-ink-faint italic">
+            <p className="font-mono text-[10px] text-text-tertiary italic">
               +{missingFields.filter((f) => f.fixHint).length - 5} more recommendations
             </p>
           )}
@@ -297,7 +295,6 @@ function ShareToolbar({ scorecard }: { scorecard: Scorecard }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // Fallback for older browsers
       const textarea = document.createElement("textarea");
       textarea.value = text;
       textarea.style.position = "fixed";
@@ -323,8 +320,7 @@ function ShareToolbar({ scorecard }: { scorecard: Scorecard }) {
     <div className="flex items-center gap-3">
       <button
         onClick={handleCopy}
-        className="inline-flex items-center gap-2 border border-rule px-3 py-1.5 font-ui text-xs tracking-wider uppercase text-ink-muted bg-transparent transition-all duration-200 hover:border-ink hover:text-ink cursor-pointer"
-        style={{ borderRadius: "1px" }}
+        className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2"
       >
         {copied ? (
           <>
@@ -345,8 +341,7 @@ function ShareToolbar({ scorecard }: { scorecard: Scorecard }) {
 
       <button
         onClick={handleEmail}
-        className="inline-flex items-center gap-2 border border-rule px-3 py-1.5 font-ui text-xs tracking-wider uppercase text-ink-muted bg-transparent transition-all duration-200 hover:border-ink hover:text-ink cursor-pointer"
-        style={{ borderRadius: "1px" }}
+        className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-2"
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -375,50 +370,44 @@ function DimensionRow({
   const hasFields = dim.fields && dim.fields.length > 0;
 
   return (
-    <div className="border-b border-rule/50 last:border-0">
-      {/* Main row — clickable */}
+    <div className="border-b border-border/50 last:border-0">
       <button
         onClick={onToggle}
-        className="w-full text-left group transition-colors hover:bg-ink/[0.02]"
+        className="w-full text-left group transition-colors hover:bg-text/[0.02]"
         disabled={!hasFields}
       >
         <div className="flex items-center gap-4 px-4 py-4 sm:px-5">
-          {/* Grade badge */}
           <div
-            className={`flex-shrink-0 w-10 h-10 flex items-center justify-center font-headline text-lg font-bold ${gradeColor(dim.grade)} ${gradeBg(dim.grade)}`}
-            style={{ borderRadius: "2px" }}
+            className={`flex-shrink-0 w-10 h-10 flex items-center justify-center font-display text-lg font-bold rounded-sm ${gradeColor(dim.grade)} ${gradeBg(dim.grade)}`}
           >
             {dim.grade}
           </div>
 
-          {/* Label + description */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-ui text-sm font-medium text-ink truncate">
+              <span className="font-sans text-sm font-medium text-text truncate">
                 {DIMENSION_LABELS[dimKey]}
               </span>
             </div>
-            <p className="font-mono text-[11px] text-ink-faint mt-0.5 truncate hidden sm:block">
+            <p className="font-mono text-[11px] text-text-tertiary mt-0.5 truncate hidden sm:block">
               {DIMENSION_DESCRIPTIONS[dimKey]}
             </p>
           </div>
 
-          {/* Score bar + number */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="w-20 sm:w-32 h-1.5 bg-rule/30 hidden sm:block" style={{ borderRadius: "1px" }}>
+            <div className="w-20 sm:w-32 h-1.5 bg-border/30 rounded-sm hidden sm:block">
               <div
-                className={`h-1.5 transition-all duration-700 ${scoreBarColor(dim.score)}`}
-                style={{ width: `${dim.score}%`, borderRadius: "1px" }}
+                className={`h-1.5 rounded-sm transition-all duration-700 ${scoreBarColor(dim.score)}`}
+                style={{ width: `${dim.score}%` }}
               />
             </div>
-            <span className="font-mono text-sm font-medium text-ink w-8 text-right">
+            <span className="font-mono text-sm font-medium text-text w-8 text-right">
               {dim.score}
             </span>
           </div>
 
-          {/* Expand chevron */}
           {hasFields && (
-            <div className="flex-shrink-0 w-5 text-ink-faint group-hover:text-ink transition-colors">
+            <div className="flex-shrink-0 w-5 text-text-tertiary group-hover:text-text transition-colors">
               <svg
                 className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
                 fill="none"
@@ -432,12 +421,11 @@ function DimensionRow({
           )}
         </div>
 
-        {/* Findings + recommendations — always visible below the row */}
         {(dim.findings.length > 0 || dim.recommendations.length > 0) && (
           <div className="px-4 sm:px-5 pb-3 pl-[4.25rem] sm:pl-[4.75rem] space-y-1">
             {dim.findings.map((f, i) => (
-              <p key={`f-${i}`} className="font-mono text-xs text-ink-light leading-snug">
-                <span className="text-ink-muted mr-1">&bull;</span>{f}
+              <p key={`f-${i}`} className="font-mono text-xs text-text-secondary leading-snug">
+                <span className="text-text-tertiary mr-1">&bull;</span>{f}
               </p>
             ))}
             {dim.recommendations.map((r, i) => (
@@ -449,7 +437,6 @@ function DimensionRow({
         )}
       </button>
 
-      {/* Expanded field breakdown */}
       {isExpanded && hasFields && (
         <FieldBreakdown fields={dim.fields} />
       )}
@@ -485,85 +472,74 @@ export default function ScoreResults({
     <div className="max-w-4xl mx-auto">
       {/* ===== Section 1: Headline & Overall Score ===== */}
       <div>
-        {/* Thick-thin double rule */}
-        <div className="border-t-[3px] border-ink" />
-        <div className="border-t border-rule mt-1" />
+        <div className="border-t-2 border-text" />
 
-        {/* AI-generated headline */}
         <h2
-          className="font-headline font-bold text-ink mt-6 mb-4 leading-tight"
+          className="font-display font-medium text-text mt-6 mb-4 leading-tight"
           style={{ fontSize: "clamp(1.5rem, 4vw, 2.2rem)" }}
         >
           {scorecard.headline}
         </h2>
 
-        {/* Score + Summary row */}
         <div className="flex flex-col sm:flex-row gap-6 items-start mb-6">
-          {/* Left: score + grade */}
           <div className="flex items-baseline gap-2 flex-shrink-0">
-            <span className="font-headline text-6xl font-black text-ink leading-none">
+            <span className="font-display text-6xl font-bold text-text leading-none">
               {scorecard.overallScore}
             </span>
-            <span className="font-headline text-4xl font-bold text-accent leading-none">
+            <span className="font-display text-4xl font-bold text-accent leading-none">
               {scorecard.overallGrade}
             </span>
           </div>
 
-          {/* Right: summary */}
-          <p className="font-body italic text-ink-light text-sm leading-relaxed">
+          <p className="font-sans italic text-text-secondary text-sm leading-relaxed">
             {scorecard.summary}
           </p>
         </div>
 
-        {/* Share toolbar + context note */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <ShareToolbar scorecard={scorecard} />
-          <p className="font-mono text-[10px] text-ink-faint italic">
+          <p className="font-mono text-[10px] text-text-tertiary italic">
             Deterministic scores &bull; AI commentary only
           </p>
         </div>
 
-        {/* Thin rule */}
-        <div className="border-t border-rule" />
+        <div className="border-t border-border" />
       </div>
 
       {/* ===== Section 2: Dimensions — Wide List ===== */}
       <div className="mt-8">
         <div className="flex items-baseline justify-between mb-4">
-          <h3 className="font-headline font-bold text-xl md:text-2xl text-ink">
+          <h3 className="font-display font-medium text-xl md:text-2xl text-text">
             Scorecard
           </h3>
-          <span className="font-mono text-xs text-ink-faint">
+          <span className="font-mono text-xs text-text-tertiary">
             {scorecard.sampleSize} products sampled
           </span>
         </div>
 
-        {/* List container */}
-        <div className="border border-rule" style={{ borderRadius: "2px" }}>
-          {/* Header row */}
-          <div className="flex items-center gap-4 px-4 sm:px-5 py-2.5 bg-ink/[0.03] border-b border-rule/50">
+        <div className="border border-border rounded-sm">
+          <div className="flex items-center gap-4 px-4 sm:px-5 py-2.5 bg-text/[0.03] border-b border-border/50">
             <div className="w-10 flex-shrink-0">
-              <span className="font-ui text-[10px] uppercase tracking-wider text-ink-muted">
+              <span className="font-sans text-[10px] uppercase tracking-wider text-text-tertiary">
                 Grade
               </span>
             </div>
             <div className="flex-1">
-              <span className="font-ui text-[10px] uppercase tracking-wider text-ink-muted">
+              <span className="font-sans text-[10px] uppercase tracking-wider text-text-tertiary">
                 Dimension
               </span>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
-              <span className="font-ui text-[10px] uppercase tracking-wider text-ink-muted hidden sm:block w-32 text-right">
+              <span className="font-sans text-[10px] uppercase tracking-wider text-text-tertiary hidden sm:block w-32 text-right">
                 Progress
               </span>
-              <span className="font-ui text-[10px] uppercase tracking-wider text-ink-muted w-8 text-right">
+              <span className="font-sans text-[10px] uppercase tracking-wider text-text-tertiary w-8 text-right">
                 Score
               </span>
               <div className="w-5" />
             </div>
           </div>
 
-          {/* Dimension rows */}
           {DIMENSION_KEYS.map((key) => {
             const dim = scorecard.dimensions[key];
             return (
@@ -581,8 +557,8 @@ export default function ScoreResults({
 
       {/* ===== Section 3: Discovered Feeds ===== */}
       <div className="mt-8">
-        <div className="border-t border-rule pt-6">
-          <h4 className="font-ui text-xs uppercase tracking-wider text-ink-muted mb-3">
+        <div className="border-t border-border pt-6">
+          <h4 className="font-sans text-xs uppercase tracking-wider text-text-tertiary mb-3">
             Discovered Data Sources
           </h4>
 
@@ -594,14 +570,14 @@ export default function ScoreResults({
                     &#10003;
                   </span>
                   <div className="min-w-0">
-                    <span className="font-mono text-xs text-ink font-medium uppercase">
+                    <span className="font-mono text-xs text-text font-medium uppercase">
                       {feed.type}
                     </span>
-                    <span className="font-mono text-xs text-ink-muted ml-2 break-all">
+                    <span className="font-mono text-xs text-text-secondary ml-2 break-all">
                       {feed.url}
                     </span>
                     {feed.productCount !== null && (
-                      <span className="font-mono text-xs text-ink-faint ml-2">
+                      <span className="font-mono text-xs text-text-tertiary ml-2">
                         ({feed.productCount} products)
                       </span>
                     )}
@@ -610,7 +586,7 @@ export default function ScoreResults({
               ))}
             </ul>
           ) : (
-            <p className="font-mono text-xs text-ink-faint italic">
+            <p className="font-mono text-xs text-text-tertiary italic">
               No structured product feeds were discovered. This site may rely on
               client-side rendering or non-standard data formats.
             </p>
@@ -621,45 +597,45 @@ export default function ScoreResults({
       {/* ===== Section 4: Store Metadata ===== */}
       {scorecard.storeMeta && (
         <div className="mt-8">
-          <div className="border-t border-rule pt-6">
-            <h4 className="font-ui text-xs uppercase tracking-wider text-ink-muted mb-3">
+          <div className="border-t border-border pt-6">
+            <h4 className="font-sans text-xs uppercase tracking-wider text-text-tertiary mb-3">
               Store Metadata
             </h4>
             <div className="grid grid-cols-2 gap-x-6 gap-y-2">
               {scorecard.storeMeta.sellerName && (
                 <>
-                  <span className="font-mono text-xs text-ink-muted">Seller</span>
-                  <span className="font-mono text-xs text-ink">{scorecard.storeMeta.sellerName}</span>
+                  <span className="font-mono text-xs text-text-secondary">Seller</span>
+                  <span className="font-mono text-xs text-text">{scorecard.storeMeta.sellerName}</span>
                 </>
               )}
               {scorecard.storeMeta.platform && (
                 <>
-                  <span className="font-mono text-xs text-ink-muted">Platform</span>
-                  <span className="font-mono text-xs text-ink capitalize">{scorecard.storeMeta.platform}</span>
+                  <span className="font-mono text-xs text-text-secondary">Platform</span>
+                  <span className="font-mono text-xs text-text capitalize">{scorecard.storeMeta.platform}</span>
                 </>
               )}
               {scorecard.storeMeta.storeCountry && (
                 <>
-                  <span className="font-mono text-xs text-ink-muted">Country</span>
-                  <span className="font-mono text-xs text-ink">{scorecard.storeMeta.storeCountry}</span>
+                  <span className="font-mono text-xs text-text-secondary">Country</span>
+                  <span className="font-mono text-xs text-text">{scorecard.storeMeta.storeCountry}</span>
                 </>
               )}
               {scorecard.storeMeta.targetCountries.length > 0 && (
                 <>
-                  <span className="font-mono text-xs text-ink-muted">Target Markets</span>
-                  <span className="font-mono text-xs text-ink">{scorecard.storeMeta.targetCountries.join(", ")}</span>
+                  <span className="font-mono text-xs text-text-secondary">Target Markets</span>
+                  <span className="font-mono text-xs text-text">{scorecard.storeMeta.targetCountries.join(", ")}</span>
                 </>
               )}
-              <span className="font-mono text-xs text-ink-muted">Return Policy</span>
-              <span className="font-mono text-xs text-ink">
+              <span className="font-mono text-xs text-text-secondary">Return Policy</span>
+              <span className="font-mono text-xs text-text">
                 {scorecard.storeMeta.returnPolicy ? "\u2713 Found" : "\u2717 Not found"}
               </span>
-              <span className="font-mono text-xs text-ink-muted">Privacy Policy</span>
-              <span className="font-mono text-xs text-ink">
+              <span className="font-mono text-xs text-text-secondary">Privacy Policy</span>
+              <span className="font-mono text-xs text-text">
                 {scorecard.storeMeta.privacyPolicyUrl ? "\u2713 Found" : "\u2717 Not found"}
               </span>
-              <span className="font-mono text-xs text-ink-muted">Terms of Service</span>
-              <span className="font-mono text-xs text-ink">
+              <span className="font-mono text-xs text-text-secondary">Terms of Service</span>
+              <span className="font-mono text-xs text-text">
                 {scorecard.storeMeta.termsOfServiceUrl ? "\u2713 Found" : "\u2717 Not found"}
               </span>
             </div>
@@ -669,27 +645,24 @@ export default function ScoreResults({
 
       {/* ===== Section 5: CTA ===== */}
       <div className="mt-8">
-        <div className="ad-block">
-          <div className="ad-block-inner">
-            <h4 className="font-headline font-bold text-xl md:text-2xl text-ink mb-2">
-              Want to improve your score?
-            </h4>
-            <p className="font-headline italic text-ink-light text-base mb-6">
-              Carve can help you go from {scorecard.overallGrade} to A.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-4">
-              <a href="#cta" className="btn-newspaper-accent">
-                Book a Call
-              </a>
-              <button onClick={onReset} className="btn-newspaper">
-                Score Another Site
-              </button>
-            </div>
+        <div className="card-elevated text-center">
+          <h4 className="font-display font-medium text-xl md:text-2xl text-text mb-2">
+            Want to improve your score?
+          </h4>
+          <p className="font-display italic text-text-secondary text-base mb-6">
+            Carve can help you go from {scorecard.overallGrade} to A.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <a href="mailto:william@usecarve.com" className="btn-accent">
+              Book a Call
+            </a>
+            <button onClick={onReset} className="btn-secondary">
+              Score Another Site
+            </button>
           </div>
         </div>
 
-        {/* Date line */}
-        <p className="font-mono text-xs text-ink-faint text-center mt-4">
+        <p className="font-mono text-xs text-text-tertiary text-center mt-4">
           Analyzed {formatDate(scorecard.analyzedAt)}
         </p>
       </div>

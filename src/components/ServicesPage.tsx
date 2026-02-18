@@ -72,111 +72,109 @@ export default function ServicesPage({
   return (
     <div className="max-w-5xl mx-auto px-4">
       {/* Header */}
-      <section className="py-10 text-center">
-        <h2 className="font-headline font-bold text-3xl md:text-4xl text-ink">
+      <section className="section text-center">
+        <p className="section-label">Services & Pricing</p>
+        <h2 className="section-title mx-auto">
           Services &amp; Pricing
         </h2>
-        <p className="font-headline italic text-ink-light text-base md:text-lg mt-3 max-w-xl mx-auto">
+        <p className="section-subtitle mx-auto max-w-xl">
           Four tiers of partnership. Start free, scale as you grow.
         </p>
       </section>
 
-      <div className="border-t-[3px] border-ink" />
-      <div className="border-t border-rule mt-1" />
+      <div className="border-t border-border" />
 
       {/* Tiers */}
-      <section className="py-6">
+      <section className="py-8">
         {tiers.map((tier, i) => (
           <div key={i}>
             <div className="md:flex gap-8 py-8">
               <div className="md:w-1/3 mb-4 md:mb-0">
-                <h3 className="font-headline font-bold text-2xl text-ink">
+                <h3 className="font-display font-medium text-2xl text-text">
                   {tier.name}
                 </h3>
                 <div className="font-mono text-sm text-accent mt-1">
                   {tier.price}
                 </div>
               </div>
-              <div className="md:w-2/3 column-rule">
-                <p className="text-justify-newspaper text-ink-light leading-relaxed mb-4">
+              <div className="md:w-2/3 md:border-l md:border-border md:pl-8">
+                <p className="font-sans text-sm text-text-secondary leading-relaxed mb-4">
                   {tier.description}
                 </p>
-                <button onClick={() => onNavigate("score")} className="btn-newspaper-accent text-xs">
+                <button onClick={() => onNavigate("score")} className="btn-accent text-xs py-2 px-5">
                   {tier.cta}
                 </button>
               </div>
             </div>
-            {i < tiers.length - 1 && <div className="border-t border-rule" />}
+            {i < tiers.length - 1 && <div className="border-t border-border" />}
           </div>
         ))}
       </section>
 
-      <div className="ornament">{"\u2726 \u2726 \u2726"}</div>
+      <div className="py-6" />
 
       {/* Protocols */}
       <section className="py-8">
-        <h3 className="font-headline font-bold text-2xl md:text-3xl text-center mb-2">
+        <p className="section-label text-center">Protocols</p>
+        <h3 className="section-title text-center mb-2">
           Protocols We Integrate
         </h3>
-        <p className="font-headline italic text-ink-light text-center text-sm mb-8">
+        <p className="font-sans text-sm text-text-secondary text-center mb-8">
           The infrastructure layer of agentic commerce
         </p>
 
-        <div className="border-t-2 border-ink" />
+        <div className="border-t border-border" />
         <div className="grid md:grid-cols-2 gap-0">
           {protocols.map((proto, i) => (
             <div
               key={i}
               className={`p-6 ${
-                i % 2 === 0 ? "md:border-r border-rule" : ""
-              } ${i < 2 ? "border-b border-rule" : ""}`}
+                i % 2 === 0 ? "md:border-r border-border" : ""
+              } ${i < 2 ? "border-b border-border" : ""}`}
             >
               <div className="flex items-baseline gap-3 mb-2">
-                <span className="font-mono font-medium text-lg text-ink">
+                <span className="font-mono font-medium text-lg text-text">
                   {proto.name}
                 </span>
-                <span className="font-ui text-xs text-ink-faint">
+                <span className="font-sans text-xs text-text-tertiary">
                   {proto.full}
                 </span>
               </div>
               <span
                 className={`font-mono text-xs ${
-                  proto.status === "LIVE" ? "text-accent" : "text-ink-muted"
+                  proto.status === "LIVE" ? "text-accent" : "text-text-secondary"
                 }`}
               >
                 {proto.status}
               </span>
-              <p className="text-sm text-ink-light mt-3 leading-relaxed text-justify-newspaper">
+              <p className="font-sans text-sm text-text-secondary mt-3 leading-relaxed">
                 {proto.description}
               </p>
             </div>
           ))}
         </div>
-        <div className="border-t-2 border-ink" />
+        <div className="border-t border-border" />
       </section>
 
       {/* Closing CTA */}
-      <div id="cta">
-        <div className="border-t-[3px] border-ink" />
-        <div className="border-t border-rule mt-1" />
-      </div>
-      <section className="py-10 text-center">
-        <p className="font-headline italic text-ink-light text-lg mb-3">
+      <div id="cta" className="border-t border-border" />
+      <section className="section text-center">
+        <p className="font-display italic text-text-secondary text-lg mb-3">
           Ready to become agent-visible?
         </p>
-        <h3 className="font-headline font-bold text-xl md:text-2xl text-ink mb-6">
+        <h3 className="font-display font-medium text-xl md:text-2xl text-text mb-6">
           Start with a free score. No commitment required.
         </h3>
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <button onClick={() => onNavigate("score")} className="btn-newspaper-accent">
+          <button onClick={() => onNavigate("score")} className="btn-accent">
             Get Your Free Score
           </button>
-          <a href="#cta" className="btn-newspaper">
+          <a href="mailto:william@usecarve.com" className="btn-secondary">
             Book a Call
           </a>
         </div>
       </section>
-      <div className="border-t border-rule" />
+      <div className="border-t border-border" />
     </div>
   );
 }
