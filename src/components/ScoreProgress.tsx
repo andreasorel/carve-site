@@ -1,99 +1,89 @@
 "use client";
 
-import type { PipelineStage } from "@/lib/types";
+import { useState, useEffect } from "react";
 
 interface ScoreProgressProps {
-  stage: PipelineStage;
-  message: string;
-  progress: number;
+  currentStep: number;
 }
 
-const STAGES: { label: string; maps: PipelineStage[] }[] = [
-  { label: "Connecting to site", maps: ["connecting", "fetching_homepage"] },
-  { label: "Discovering product feeds", maps: ["discovering_feeds"] },
-  { label: "Extracting store metadata", maps: ["extracting_store_meta"] },
-  { label: "Sampling product catalog", maps: ["sampling_products"] },
-  { label: "Scoring against ACP fields", maps: ["scoring_fields"] },
-  { label: "AI analysis & commentary", maps: ["analyzing_acp"] },
-  { label: "Generating scorecard", maps: ["generating_scorecard"] },
+const steps = [
+  {
+    label: "Discovered feed",
+    activeLabel: "Discovering feed",
+    detail: "JSON-LD via sitemap",
+  },
+  {
+    label: "Crawled catalog",
+    activeLabel: "Crawling catalog",
+    detail: "Fetching products",
+  },
+  {
+    label: "Scored against ACP",
+    activeLabel: "Scoring against ACP",
+    detail: "Evaluating field coverage",
+  },
 ];
 
-function getActiveIndex(stage: PipelineStage): number {
-  for (let i = 0; i < STAGES.length; i++) {
-    if (STAGES[i].maps.includes(stage)) return i;
-  }
-  if (stage === "complete") return STAGES.length;
-  return 0;
-}
+export default function ScoreProgress({ currentStep }: ScoreProgressProps) {
+  const [elapsed, setElapsed] = useState(0);
 
-export default function ScoreProgress({
-  stage,
-  message,
-  progress,
-}: ScoreProgressProps) {
-  const activeIndex = getActiveIndex(stage);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed((prev) => prev + 0.1);
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <div className="max-w-lg mx-auto">
-      {/* Progress bar */}
-      <div className="border border-border rounded-sm overflow-hidden">
-        <div
-          className="h-[3px] bg-accent transition-all duration-700 ease-out"
-          style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
-        />
-      </div>
+    <div className="max-w-md mx-auto py-16">
+      <p className="section-label mb-6">Analyzing Feed</p>
 
-      {/* Stage timeline */}
-      <div className="mt-8 space-y-4">
-        {STAGES.map((s, i) => {
-          const isCompleted = i < activeIndex;
-          const isActive = i === activeIndex;
+      <div className="space-y-0">
+        {steps.map((step, i) => {
+          const isDone = i < currentStep;
+          const isPending = i > currentStep;
+
+          if (isPending) {
+            return (
+              <div key={i} className="flex items-center gap-3 py-2.5">
+                <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-border-strong" />
+                </div>
+                <span className="font-sans text-sm text-text-tertiary">{step.activeLabel}</span>
+              </div>
+            );
+          }
+
+          if (isDone) {
+            return (
+              <div key={i} className="flex items-center gap-3 py-2.5">
+                <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span className="font-sans text-sm text-text-secondary flex-1">{step.label}</span>
+                <span className="font-sans text-xs text-text-tertiary">{step.detail}</span>
+              </div>
+            );
+          }
 
           return (
-            <div key={i} className="flex items-center gap-3">
-              <div className="flex-shrink-0">
-                {isCompleted ? (
-                  <div className="w-2 h-2 rounded-full bg-accent" />
-                ) : isActive ? (
-                  <div className="w-2 h-2 rounded-full bg-text animate-pulse" />
-                ) : (
-                  <div className="w-2 h-2 rounded-full border border-border bg-transparent" />
-                )}
+            <div key={i} className="flex items-center gap-3 py-2.5">
+              <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                <div className="w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
               </div>
-
-              <span
-                className={`font-mono text-xs w-4 ${
-                  isCompleted
-                    ? "text-accent"
-                    : isActive
-                    ? "text-text"
-                    : "text-text-tertiary"
-                }`}
-              >
-                {i + 1}
-              </span>
-
-              <span
-                className={`font-sans text-sm ${
-                  isCompleted
-                    ? "text-text-tertiary line-through"
-                    : isActive
-                    ? "text-text font-medium"
-                    : "text-text-tertiary"
-                }`}
-              >
-                {s.label}
-              </span>
+              <span className="font-sans text-sm font-medium text-text flex-1">{step.activeLabel}</span>
+              <span className="font-sans text-xs text-text-tertiary">{step.detail}...</span>
             </div>
           );
         })}
       </div>
 
-      {/* Current message */}
-      <div className="mt-8 border-l-2 border-r-2 border-accent px-6 py-4 text-center">
-        <p className="font-display italic text-text-secondary text-base md:text-lg">
-          {message}
-        </p>
+      <div className="flex justify-end mt-6">
+        <span className="font-sans text-xs text-text-tertiary tabular-nums">
+          Elapsed: {elapsed.toFixed(1)}s
+        </span>
       </div>
     </div>
   );

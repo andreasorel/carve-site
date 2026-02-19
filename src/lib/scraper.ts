@@ -1,67 +1,200 @@
 import * as cheerio from "cheerio";
-import type {
-  NormalizedProduct,
-  ScrapedProductData,
-} from "./types";
+import { Product, ReviewData, ReviewItem, QAPair } from "./types";
+import { safeFetch } from "./utils";
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
+// ─── Types ───────────────────────────────────────────────────
 
-const USER_AGENT = "CarveBot/1.0 (+https://carve.co)";
-const FETCH_TIMEOUT_MS = 12_000; // longer timeout for product pages
-const MAX_REDIRECTS = 3;
-
-// ---------------------------------------------------------------------------
-// Fetch helper (self-contained, same pattern as crawler.ts but 12s timeout)
-// ---------------------------------------------------------------------------
-
-async function fetchPage(url: string): Promise<string | null> {
-  try {
-    let currentUrl = url;
-    for (let i = 0; i <= MAX_REDIRECTS; i++) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-      try {
-        const res = await fetch(currentUrl, {
-          headers: { "User-Agent": USER_AGENT },
-          redirect: "manual",
-          signal: controller.signal,
-        });
-
-        clearTimeout(timer);
-
-        // Handle redirects manually
-        if ([301, 302, 303, 307, 308].includes(res.status)) {
-          const location = res.headers.get("location");
-          if (!location) return null;
-          currentUrl = location.startsWith("http")
-            ? location
-            : new URL(location, currentUrl).href;
-          continue;
-        }
-
-        if (!res.ok) return null;
-        return await res.text();
-      } catch {
-        clearTimeout(timer);
-        return null;
-      }
-    }
-    return null; // Too many redirects
-  } catch {
-    return null;
-  }
+export interface StoreContext {
+  shipping_details: string;
+  return_policy: string;
+  seller_name: string;
+  store_country: string;
+  target_countries: string[];
 }
 
-// ---------------------------------------------------------------------------
-// JSON-LD parser — finds the first Product schema in any LD+JSON block
-// ---------------------------------------------------------------------------
+export interface ScrapedProductData {
+  reviews: ReviewData | null;
+  additional_images: string[];
+  video_url: string;
+  q_and_a: QAPair[];
+  condition: string;
+  material: string;
+  weight: string;
+  dimensions: string;
+  pageText: string;
+  reviewItems: ReviewItem[];
+  age_group: string;
+  gender: string;
+}
 
-function parseJsonLd(
-  $: cheerio.CheerioAPI,
-): Record<string, unknown> | null {
+// ─── Country inference ───────────────────────────────────────
+
+const TLD_COUNTRY_MAP: Record<string, string> = {
+  ".co.uk": "GB", ".uk": "GB",
+  ".de": "DE", ".fr": "FR", ".it": "IT", ".es": "ES",
+  ".nl": "NL", ".be": "BE", ".at": "AT", ".ch": "CH",
+  ".se": "SE", ".no": "NO", ".dk": "DK", ".fi": "FI",
+  ".pl": "PL", ".pt": "PT", ".ie": "IE",
+  ".ca": "CA", ".au": "AU", ".nz": "NZ",
+  ".jp": "JP", ".kr": "KR", ".in": "IN",
+  ".br": "BR", ".mx": "MX",
+  ".com": "US", ".us": "US",
+};
+
+const CURRENCY_COUNTRY_MAP: Record<string, string> = {
+  GBP: "GB", EUR: "DE", CAD: "CA", AUD: "AU", NZD: "NZ",
+  JPY: "JP", KRW: "KR", INR: "IN", BRL: "BR", MXN: "MX",
+  SEK: "SE", NOK: "NO", DKK: "DK", CHF: "CH", PLN: "PL",
+  USD: "US",
+};
+
+function inferCountryFromDomain(baseUrl: string): string {
+  try {
+    const hostname = new URL(baseUrl).hostname;
+    // Check longest TLDs first (e.g. .co.uk before .uk)
+    const sorted = Object.keys(TLD_COUNTRY_MAP).sort((a, b) => b.length - a.length);
+    for (const tld of sorted) {
+      if (hostname.endsWith(tld)) return TLD_COUNTRY_MAP[tld];
+    }
+  } catch { /* ignore */ }
+  return "US";
+}
+
+function inferCountryFromCurrency(text: string): string | null {
+  for (const [code, country] of Object.entries(CURRENCY_COUNTRY_MAP)) {
+    if (text.includes(code)) return country;
+  }
+  return null;
+}
+
+function inferTargetCountries(storeCountry: string, shippingText: string): string[] {
+  const countries = new Set<string>([storeCountry]);
+  const lower = shippingText.toLowerCase();
+
+  if (lower.includes("worldwide") || lower.includes("international") || lower.includes("global")) {
+    countries.add("US");
+    countries.add("GB");
+    countries.add("CA");
+    countries.add("AU");
+    countries.add("DE");
+  }
+  if (lower.includes("united states") || lower.includes("usa") || lower.includes("u.s.")) countries.add("US");
+  if (lower.includes("canada")) countries.add("CA");
+  if (lower.includes("united kingdom") || lower.includes("uk")) countries.add("GB");
+  if (lower.includes("australia")) countries.add("AU");
+  if (lower.includes("europe")) {
+    countries.add("DE");
+    countries.add("FR");
+    countries.add("IT");
+    countries.add("ES");
+    countries.add("NL");
+  }
+
+  return Array.from(countries);
+}
+
+// ─── Store Context Scraping ──────────────────────────────────
+
+function extractTextContent($: cheerio.CheerioAPI, maxLen = 2000): string {
+  // Remove nav, header, footer, script, style elements
+  $("nav, header, footer, script, style, noscript, iframe").remove();
+  const text = $("main, article, .page-content, .rte, [role='main'], body")
+    .first()
+    .text()
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.slice(0, maxLen);
+}
+
+export async function scrapeStoreContext(baseUrl: string): Promise<StoreContext> {
+  const context: StoreContext = {
+    shipping_details: "",
+    return_policy: "",
+    seller_name: "",
+    store_country: "",
+    target_countries: [],
+  };
+
+  const shippingPaths = [
+    "/policies/shipping-policy",
+    "/pages/shipping",
+    "/shipping",
+    "/pages/shipping-policy",
+  ];
+  const returnPaths = [
+    "/policies/refund-policy",
+    "/pages/returns",
+    "/returns",
+    "/pages/refund-policy",
+    "/pages/return-policy",
+  ];
+  const aboutPaths = ["/pages/about", "/about", "/pages/about-us"];
+
+  // Fetch homepage + policy pages in parallel
+  const [homepageRes, ...policyResults] = await Promise.allSettled([
+    safeFetch(baseUrl, 10000),
+    ...shippingPaths.map((p) => safeFetch(baseUrl + p, 10000)),
+    ...returnPaths.map((p) => safeFetch(baseUrl + p, 10000)),
+    ...aboutPaths.map((p) => safeFetch(baseUrl + p, 10000)),
+  ]);
+
+  // Extract seller name from homepage
+  if (homepageRes.status === "fulfilled" && homepageRes.value) {
+    try {
+      const html = await homepageRes.value.text();
+      const $ = cheerio.load(html);
+      context.seller_name =
+        $('meta[property="og:site_name"]').attr("content") ||
+        $("title").first().text().split(/[|\-–]/).pop()?.trim() ||
+        "";
+    } catch { /* ignore */ }
+  }
+
+  // Extract shipping details (first successful page)
+  const shippingResults = policyResults.slice(0, shippingPaths.length);
+  for (const result of shippingResults) {
+    if (result.status === "fulfilled" && result.value) {
+      try {
+        const html = await result.value.text();
+        const $ = cheerio.load(html);
+        context.shipping_details = extractTextContent($, 1500);
+        if (context.shipping_details.length > 50) break;
+      } catch { /* ignore */ }
+    }
+  }
+
+  // Extract return policy (first successful page)
+  const returnResults = policyResults.slice(shippingPaths.length, shippingPaths.length + returnPaths.length);
+  for (const result of returnResults) {
+    if (result.status === "fulfilled" && result.value) {
+      try {
+        const html = await result.value.text();
+        const $ = cheerio.load(html);
+        context.return_policy = extractTextContent($, 1500);
+        if (context.return_policy.length > 50) break;
+      } catch { /* ignore */ }
+    }
+  }
+
+  // Infer country
+  context.store_country = inferCountryFromDomain(baseUrl);
+  const currencyCountry = inferCountryFromCurrency(
+    context.shipping_details + " " + context.return_policy
+  );
+  if (currencyCountry) context.store_country = currencyCountry;
+
+  // Infer target countries from shipping text
+  context.target_countries = inferTargetCountries(
+    context.store_country,
+    context.shipping_details
+  );
+
+  return context;
+}
+
+// ─── Product Page Scraping ───────────────────────────────────
+
+function parseJsonLd($: cheerio.CheerioAPI): Record<string, unknown> | null {
   let product: Record<string, unknown> | null = null;
   $('script[type="application/ld+json"]').each((_, el) => {
     if (product) return;
@@ -82,78 +215,46 @@ function parseJsonLd(
           }
         }
       }
-    } catch {
-      /* ignore malformed JSON-LD */
-    }
+    } catch { /* ignore malformed JSON-LD */ }
   });
   return product;
 }
 
-// ---------------------------------------------------------------------------
-// Text extraction helper
-// ---------------------------------------------------------------------------
-
-function extractTextContent(
-  $: cheerio.CheerioAPI,
-  maxLen = 5000,
-): string {
-  // Remove non-content elements
-  $("nav, header, footer, script, style, noscript, iframe").remove();
-  const text = $("main, article, .page-content, .rte, [role='main'], body")
-    .first()
-    .text()
-    .replace(/\s+/g, " ")
-    .trim();
-  return text.slice(0, maxLen);
-}
-
-// ---------------------------------------------------------------------------
-// scrapeProductPage — fetch a single product URL and extract enrichment data
-// ---------------------------------------------------------------------------
-
-export async function scrapeProductPage(
-  url: string,
-): Promise<ScrapedProductData | null> {
-  const html = await fetchPage(url);
-  if (!html) return null;
+export async function scrapeProductPage(url: string): Promise<ScrapedProductData | null> {
+  const res = await safeFetch(url, 12000);
+  if (!res) return null;
 
   try {
+    const html = await res.text();
     const $ = cheerio.load(html);
     const jsonLd = parseJsonLd($);
 
     const data: ScrapedProductData = {
       reviews: null,
-      additionalImages: [],
-      videoUrl: "",
-      qAndA: [],
+      additional_images: [],
+      video_url: "",
+      q_and_a: [],
       condition: "",
       material: "",
       weight: "",
       dimensions: "",
       pageText: "",
       reviewItems: [],
-      ageGroup: "",
+      age_group: "",
       gender: "",
     };
 
-    // ── Page text for LLM grounding (clone to avoid mutating the DOM) ──
+    // Extract main page text content for LLM grounding (use a clone to avoid mutating the DOM)
     try {
       const $clone = cheerio.load($.html());
       data.pageText = extractTextContent($clone, 5000);
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
 
-    // ── Review items from DOM selectors ─────────────────────────────────
+    // Extract structured review items from DOM
     const reviewSelectors = [
-      ".review-text",
-      ".review-body",
-      ".spr-review-content-body",
-      "[data-review-body]",
-      ".yotpo-review-content",
-      ".review__body",
-      ".product-review-body",
-      ".cr-review-text",
+      ".review-text", ".review-body", ".spr-review-content-body",
+      "[data-review-body]", ".yotpo-review-content", ".review__body",
+      ".product-review-body", ".cr-review-text",
     ];
     for (const sel of reviewSelectors) {
       $(sel).each((_, el) => {
@@ -171,37 +272,21 @@ export async function scrapeProductPage(
       });
       if (data.reviewItems.length >= 5) break;
     }
-
-    // ── Review items from JSON-LD review array ──────────────────────────
+    // Also extract review items from JSON-LD review array
     if (data.reviewItems.length < 5 && jsonLd) {
-      const reviews = Array.isArray(jsonLd.review)
-        ? jsonLd.review
-        : Array.isArray((jsonLd as Record<string, unknown>)["@graph"])
-          ? (
-              (jsonLd as Record<string, unknown>)["@graph"] as Record<
-                string,
-                unknown
-              >[]
-            ).filter((n) => n["@type"] === "Review")
+      const reviews = Array.isArray(jsonLd.review) ? jsonLd.review
+        : (jsonLd as Record<string, unknown>)["@graph"] && Array.isArray((jsonLd as Record<string, unknown>)["@graph"])
+          ? ((jsonLd as Record<string, unknown>)["@graph"] as Record<string, unknown>[]).filter((n) => n["@type"] === "Review")
           : [];
       for (const rev of reviews as Record<string, unknown>[]) {
         if (data.reviewItems.length >= 5) break;
-        const body =
-          typeof rev.reviewBody === "string"
-            ? rev.reviewBody
-            : typeof rev.description === "string"
-              ? rev.description
-              : "";
+        const body = typeof rev.reviewBody === "string" ? rev.reviewBody
+          : typeof rev.description === "string" ? rev.description : "";
         if (body.length > 10) {
-          const reviewRating = rev.reviewRating as
-            | Record<string, unknown>
-            | undefined;
-          const ratingValue = reviewRating
-            ? Number(reviewRating.ratingValue || 0)
-            : 0;
+          const reviewRating = rev.reviewRating as Record<string, unknown> | undefined;
+          const ratingValue = reviewRating ? Number(reviewRating.ratingValue || 0) : 0;
           data.reviewItems.push({
-            title:
-              typeof rev.name === "string" ? rev.name.slice(0, 100) : "",
+            title: typeof rev.name === "string" ? rev.name.slice(0, 100) : "",
             content: body.replace(/\s+/g, " ").trim().slice(0, 200),
             minRating: 0,
             maxRating: 5,
@@ -211,11 +296,8 @@ export async function scrapeProductPage(
       }
     }
 
-    // ── Aggregate rating from JSON-LD ───────────────────────────────────
-    if (
-      jsonLd?.aggregateRating &&
-      typeof jsonLd.aggregateRating === "object"
-    ) {
+    // Reviews from JSON-LD aggregateRating
+    if (jsonLd?.aggregateRating && typeof jsonLd.aggregateRating === "object") {
       const ar = jsonLd.aggregateRating as Record<string, unknown>;
       const rating = Number(ar.ratingValue || 0);
       const count = Number(ar.reviewCount || ar.ratingCount || 0);
@@ -224,99 +306,68 @@ export async function scrapeProductPage(
       }
     }
 
-    // ── Additional images from JSON-LD ──────────────────────────────────
+    // Additional images from JSON-LD
     if (jsonLd?.image) {
-      const images = Array.isArray(jsonLd.image)
-        ? jsonLd.image
-        : [jsonLd.image];
+      const images = Array.isArray(jsonLd.image) ? jsonLd.image : [jsonLd.image];
       for (const img of images) {
-        const imgUrl =
-          typeof img === "string"
-            ? img
-            : (img as Record<string, unknown>)?.url;
+        const imgUrl = typeof img === "string" ? img : (img as Record<string, unknown>)?.url;
         if (typeof imgUrl === "string" && imgUrl.startsWith("http")) {
-          data.additionalImages.push(imgUrl);
+          data.additional_images.push(imgUrl);
         }
       }
     }
-
-    // ── Additional images from og:image meta tags ───────────────────────
+    // Also collect from og:image and product gallery
     $('meta[property="og:image"]').each((_, el) => {
       const content = $(el).attr("content");
-      if (
-        content &&
-        content.startsWith("http") &&
-        !data.additionalImages.includes(content)
-      ) {
-        data.additionalImages.push(content);
+      if (content && content.startsWith("http") && !data.additional_images.includes(content)) {
+        data.additional_images.push(content);
       }
     });
-
-    // ── Gallery images from common DOM selectors ────────────────────────
-    $(
-      ".product-gallery img, .product-images img, [data-product-image] img, .product__media img",
-    ).each((_, el) => {
+    // Gallery images from common selectors
+    $(".product-gallery img, .product-images img, [data-product-image] img, .product__media img").each((_, el) => {
       const src = $(el).attr("src") || $(el).attr("data-src");
-      if (
-        src &&
-        src.startsWith("http") &&
-        !data.additionalImages.includes(src)
-      ) {
-        data.additionalImages.push(src);
+      if (src && src.startsWith("http") && !data.additional_images.includes(src)) {
+        data.additional_images.push(src);
       }
     });
-    data.additionalImages = data.additionalImages.slice(0, 10);
+    data.additional_images = data.additional_images.slice(0, 10);
 
-    // ── Video URL from <video> elements and YouTube/Vimeo iframes ───────
-    const videoEl =
-      $("video source").first().attr("src") || $("video").first().attr("src");
+    // Video URL
+    const videoEl = $("video source").first().attr("src") || $("video").first().attr("src");
     if (videoEl) {
-      data.videoUrl = videoEl;
+      data.video_url = videoEl;
     } else {
+      // Check for YouTube/Vimeo iframes
       $("iframe").each((_, el) => {
-        if (data.videoUrl) return;
+        if (data.video_url) return;
         const src = $(el).attr("src") || "";
-        if (
-          src.includes("youtube.com") ||
-          src.includes("youtu.be") ||
-          src.includes("vimeo.com")
-        ) {
-          data.videoUrl = src;
+        if (src.includes("youtube.com") || src.includes("youtu.be") || src.includes("vimeo.com")) {
+          data.video_url = src;
         }
       });
     }
 
-    // ── Q&A from FAQPage JSON-LD schema ─────────────────────────────────
+    // Q&A / FAQ sections — parse into QAPair[]
+    // Check JSON-LD for FAQPage first (structured data is more reliable)
     $('script[type="application/ld+json"]').each((_, el) => {
-      if (data.qAndA.length > 0) return;
+      if (data.q_and_a.length > 0) return;
       try {
         const json = JSON.parse($(el).html() || "{}");
         const schemas = Array.isArray(json) ? json : [json];
         for (const schema of schemas) {
-          if (
-            schema["@type"] === "FAQPage" &&
-            Array.isArray(schema.mainEntity)
-          ) {
-            data.qAndA = schema.mainEntity
-              .slice(0, 5)
-              .map((qa: Record<string, unknown>) => ({
-                q: String(qa.name || ""),
-                a: String(
-                  (qa.acceptedAnswer as Record<string, unknown>)?.text || "",
-                ),
-              }));
+          if (schema["@type"] === "FAQPage" && Array.isArray(schema.mainEntity)) {
+            data.q_and_a = schema.mainEntity.slice(0, 5).map((qa: Record<string, unknown>) => ({
+              q: String(qa.name || ""),
+              a: String((qa.acceptedAnswer as Record<string, unknown>)?.text || ""),
+            }));
           }
         }
-      } catch {
-        /* ignore */
-      }
+      } catch { /* ignore */ }
     });
 
-    // ── Demographics from JSON-LD audience ───────────────────────────────
+    // Demographics from JSON-LD
     if (jsonLd) {
-      const audience = jsonLd.audience as
-        | Record<string, unknown>
-        | undefined;
+      const audience = jsonLd.audience as Record<string, unknown> | undefined;
       if (audience) {
         const suggestedGender = audience.suggestedGender;
         if (typeof suggestedGender === "string") {
@@ -325,11 +376,11 @@ export async function scrapeProductPage(
         const minAge = Number(audience.suggestedMinAge || 0);
         const maxAge = Number(audience.suggestedMaxAge || 0);
         if (minAge > 0 || maxAge > 0) {
-          if (maxAge <= 1) data.ageGroup = "newborn";
-          else if (maxAge <= 3) data.ageGroup = "infant";
-          else if (maxAge <= 5) data.ageGroup = "toddler";
-          else if (maxAge <= 13) data.ageGroup = "kids";
-          else data.ageGroup = "adult";
+          if (maxAge <= 1) data.age_group = "newborn";
+          else if (maxAge <= 3) data.age_group = "infant";
+          else if (maxAge <= 5) data.age_group = "toddler";
+          else if (maxAge <= 13) data.age_group = "kids";
+          else data.age_group = "adult";
         }
       }
       // Also check top-level gender field
@@ -338,7 +389,7 @@ export async function scrapeProductPage(
       }
     }
 
-    // ── Condition from JSON-LD itemCondition ─────────────────────────────
+    // Condition from JSON-LD
     if (jsonLd?.itemCondition) {
       const cond = String(jsonLd.itemCondition).toLowerCase();
       if (cond.includes("new")) data.condition = "new";
@@ -346,23 +397,18 @@ export async function scrapeProductPage(
       else if (cond.includes("used")) data.condition = "used";
     }
 
-    // ── Material from JSON-LD ───────────────────────────────────────────
+    // Material, weight, dimensions from JSON-LD
     if (jsonLd?.material) {
       data.material = String(jsonLd.material);
     }
-
-    // ── Weight from JSON-LD (handles object and string forms) ───────────
     if (jsonLd?.weight) {
       if (typeof jsonLd.weight === "object") {
         const w = jsonLd.weight as Record<string, unknown>;
-        data.weight =
-          `${w.value || ""} ${w.unitCode || w.unitText || ""}`.trim();
+        data.weight = `${w.value || ""} ${w.unitCode || w.unitText || ""}`.trim();
       } else {
         data.weight = String(jsonLd.weight);
       }
     }
-
-    // ── Dimensions from JSON-LD width/height/depth ──────────────────────
     if (jsonLd?.depth || jsonLd?.width || jsonLd?.height) {
       const parts: string[] = [];
       for (const dim of ["width", "height", "depth"] as const) {
@@ -370,9 +416,7 @@ export async function scrapeProductPage(
         if (val) {
           if (typeof val === "object") {
             const d = val as Record<string, unknown>;
-            parts.push(
-              `${dim}: ${d.value || ""} ${d.unitCode || d.unitText || ""}`,
-            );
+            parts.push(`${dim}: ${d.value || ""} ${d.unitCode || d.unitText || ""}`);
           } else {
             parts.push(`${dim}: ${val}`);
           }
@@ -387,41 +431,25 @@ export async function scrapeProductPage(
   }
 }
 
-// ---------------------------------------------------------------------------
-// scrapeProductPages — batch scraper with parallel processing
-// ---------------------------------------------------------------------------
-
 export async function scrapeProductPages(
-  products: NormalizedProduct[],
-  batchSize = 10,
+  products: Product[],
+  batchSize = 10
 ): Promise<Map<string, ScrapedProductData>> {
   const results = new Map<string, ScrapedProductData>();
-  const productsWithUrls = products.filter(
-    (p) => p.url && p.url.startsWith("http"),
-  );
+  const productsWithUrls = products.filter((p) => p.url && p.url.startsWith("http"));
 
   for (let i = 0; i < productsWithUrls.length; i += batchSize) {
     const batch = productsWithUrls.slice(i, i + batchSize);
     const batchResults = await Promise.allSettled(
       batch.map(async (product) => {
-        const scraped = await scrapeProductPage(product.url!);
-        const key =
-          product.itemId ||
-          product.productId ||
-          product.sku ||
-          product.url ||
-          "";
-        return { key, scraped };
-      }),
+        const scraped = await scrapeProductPage(product.url);
+        return { id: product.item_id, scraped };
+      })
     );
 
     for (const result of batchResults) {
-      if (
-        result.status === "fulfilled" &&
-        result.value.scraped &&
-        result.value.key
-      ) {
-        results.set(result.value.key, result.value.scraped);
+      if (result.status === "fulfilled" && result.value.scraped) {
+        results.set(result.value.id, result.value.scraped);
       }
     }
   }

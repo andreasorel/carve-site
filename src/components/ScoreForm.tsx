@@ -3,48 +3,37 @@
 import { useState, FormEvent } from "react";
 
 interface ScoreFormProps {
-  onSubmit: (url: string, email: string) => void;
+  onSubmit: (url: string) => void;
 }
 
 export default function ScoreForm({ onSubmit }: ScoreFormProps) {
   const [url, setUrl] = useState("");
-  const [email, setEmail] = useState("");
-  const [errors, setErrors] = useState<{ url?: string; email?: string }>({});
+  const [error, setError] = useState("");
 
   function validate(): boolean {
-    const next: { url?: string; email?: string } = {};
-
     if (!url.trim()) {
-      next.url = "Please enter your store URL.";
-    } else {
-      try {
-        const parsed = new URL(
-          url.startsWith("http") ? url : `https://${url}`
-        );
-        if (!parsed.hostname.includes(".")) {
-          next.url = "Please enter a valid URL.";
-        }
-      } catch {
-        next.url = "Please enter a valid URL.";
+      setError("Please enter your store URL.");
+      return false;
+    }
+    try {
+      const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
+      if (!parsed.hostname.includes(".")) {
+        setError("Please enter a valid URL.");
+        return false;
       }
+    } catch {
+      setError("Please enter a valid URL.");
+      return false;
     }
-
-    if (!email.trim()) {
-      next.email = "Please enter your email.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      next.email = "Please enter a valid email address.";
-    }
-
-    setErrors(next);
-    return Object.keys(next).length === 0;
+    setError("");
+    return true;
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!validate()) return;
-
     const normalizedUrl = url.startsWith("http") ? url : `https://${url}`;
-    onSubmit(normalizedUrl, email);
+    onSubmit(normalizedUrl);
   }
 
   return (
@@ -54,57 +43,38 @@ export default function ScoreForm({ onSubmit }: ScoreFormProps) {
       </p>
 
       <h2 className="font-display font-medium text-2xl md:text-3xl text-text mb-2">
-        How Agent-Ready Is Your Webshop?
+        How Agent-Ready Is Your Store?
       </h2>
 
-      <p className="font-display italic text-text-secondary text-base mb-6">
-        Enter your store URL. We will do the rest.
+      <p className="font-sans text-text-secondary text-sm leading-relaxed mb-6">
+        Enter your store URL. We&apos;ll analyze your product data quality, trust signals,
+        and feed completeness.
       </p>
 
       <form onSubmit={handleSubmit} noValidate>
-        <div className="mb-4 text-left">
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="url"
             value={url}
             onChange={(e) => {
               setUrl(e.target.value);
-              if (errors.url) setErrors((prev) => ({ ...prev, url: undefined }));
+              if (error) setError("");
             }}
-            placeholder="https://your-store.com"
-            className="w-full border border-border bg-surface px-4 py-3 font-mono text-sm text-text placeholder:text-text-tertiary rounded-sm focus:border-text focus:outline-none transition-colors"
+            placeholder="your-store.com"
+            className="flex-1 border border-border bg-surface px-4 py-3 font-sans text-sm text-text placeholder:text-text-tertiary rounded-sm focus:border-text focus:outline-none transition-colors"
           />
-          {errors.url && (
-            <p className="font-mono text-xs text-accent mt-1">{errors.url}</p>
-          )}
+          <button type="submit" className="btn-accent whitespace-nowrap">
+            Analyze Feed
+          </button>
         </div>
-
-        <div className="mb-6 text-left">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
-            }}
-            placeholder="your@email.com"
-            className="w-full border border-border bg-surface px-4 py-3 font-mono text-sm text-text placeholder:text-text-tertiary rounded-sm focus:border-text focus:outline-none transition-colors"
-          />
-          {errors.email && (
-            <p className="font-mono text-xs text-accent mt-1">{errors.email}</p>
-          )}
-        </div>
-
-        <button
-          type="submit"
-          className="btn-accent w-full sm:w-auto"
-        >
-          Analyze My Store
-        </button>
+        {error && (
+          <p className="font-sans text-xs text-accent mt-2">{error}</p>
+        )}
       </form>
 
-      <p className="font-mono text-xs text-text-tertiary mt-5 leading-relaxed">
-        We sample up to 10 products. No data is stored beyond this session.
-        Results in ~30 seconds.
+      <p className="font-sans text-xs text-text-tertiary mt-5 leading-relaxed">
+        Analyzes up to 1,000 products. Checks data quality, trust signals,
+        media coverage, and feed completeness. Results in ~30 seconds.
       </p>
     </div>
   );
