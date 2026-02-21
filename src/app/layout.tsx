@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, DM_Sans, DM_Mono, JetBrains_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -61,6 +62,7 @@ export default function RootLayout({
         className={`${playfair.variable} ${dmSans.variable} ${dmMono.variable} ${jetbrains.variable} antialiased`}
       >
         {children}
+        <Analytics />
       </body>
     </html>
   );
