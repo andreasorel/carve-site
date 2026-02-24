@@ -59,10 +59,10 @@ const config: Config = {
       fontFamily: {
         display: ["var(--font-playfair)", "Georgia", "serif"],
         sans: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-jetbrains)", "var(--font-dm-mono)", "monospace"],
+        mono: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
         // Legacy aliases
         headline: ["var(--font-playfair)", "Georgia", "serif"],
-        body: ["Georgia", "Times New Roman", "serif"],
+        body: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
         ui: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
       },
       borderRadius: {

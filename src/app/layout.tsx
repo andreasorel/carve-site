@@ -1,26 +1,20 @@
 import type { Metadata } from "next";
-import { Playfair_Display, DM_Sans, DM_Mono, JetBrains_Mono } from "next/font/google";
+import { Libre_Baskerville, Work_Sans, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
-const playfair = Playfair_Display({
+const libreBaskerville = Libre_Baskerville({
   subsets: ["latin"],
   variable: "--font-playfair",
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: ["400", "700"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
-const dmSans = DM_Sans({
+const workSans = Work_Sans({
   subsets: ["latin"],
   variable: "--font-dm-sans",
-  weight: ["400", "500", "700"],
-  display: "swap",
-});
-
-const dmMono = DM_Mono({
-  subsets: ["latin"],
-  variable: "--font-dm-mono",
-  weight: ["400", "500"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -59,7 +53,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${playfair.variable} ${dmSans.variable} ${dmMono.variable} ${jetbrains.variable} antialiased`}
+        className={`${libreBaskerville.variable} ${workSans.variable} ${jetbrains.variable} antialiased`}
       >
         {children}
         <Analytics />

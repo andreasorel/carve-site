@@ -32,12 +32,12 @@ export default function HomePage({
         </div>
         <div className="max-w-6xl mx-auto px-6">
           <h1
-            className="font-display text-text leading-[1.05] tracking-[-0.03em] max-w-4xl"
-            style={{ fontSize: "clamp(36px, 5.5vw, 64px)" }}
+            className="font-display text-text leading-[1.25] tracking-[-0.02em] max-w-4xl"
+            style={{ fontSize: "clamp(32px, 4.5vw, 52px)" }}
           >
             Making your products{" "}
-            <span className="italic text-accent">visible</span> and{" "}
-            <span className="italic text-accent">purchasable</span>{" "}
+            <span className="text-accent">visible</span> and{" "}
+            <span className="text-accent">purchasable</span>{" "}
             through{" "}
             <span
               key={heroWords[wordIndex]}
