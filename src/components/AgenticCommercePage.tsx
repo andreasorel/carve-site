@@ -1,6 +1,6 @@
 "use client";
 
-type Page = "home" | "commerce" | "pricing" | "insight" | "started" | "score";
+type Page = "home" | "about" | "commerce" | "pricing" | "blog" | "score";
 
 export default function AgenticCommercePage({
   onNavigate,
@@ -9,175 +9,133 @@ export default function AgenticCommercePage({
 }) {
   return (
     <div>
-      {/* ── THE SHIFT ── */}
+      {/* ── HERO ── */}
       <section className="bg-surface-inverse py-28 md:py-36">
         <div className="max-w-6xl mx-auto px-6">
           <h1
             className="font-display font-normal text-text-on-dark leading-[1.05] max-w-3xl tracking-[-0.03em]"
             style={{ fontSize: "clamp(32px, 5vw, 56px)" }}
           >
-            The shopping funnel just collapsed.
+            The way people buy is changing. Permanently.
           </h1>
           <p className="font-sans text-lg text-text-on-dark-muted mt-8 leading-relaxed max-w-xl">
-            Consumers no longer browse ten tabs, compare reviews, and hunt for
-            coupons. They ask an agent, get a recommendation, and buy.
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-px mt-20 bg-white/10 rounded-sm overflow-hidden">
-            <div className="bg-surface-inverse p-8 md:p-10">
-              <p className="font-sans text-[11px] font-medium uppercase tracking-[0.15em] text-text-on-dark-muted mb-6">
-                The Old Funnel
-              </p>
-              <div className="space-y-0">
-                {["Search", "Browse", "Compare", "Read reviews", "Find coupon", "Purchase"].map(
-                  (step, i) => (
-                    <div
-                      key={i}
-                      className="font-mono text-sm text-text-on-dark-muted py-2.5 border-b border-white/[0.06] last:border-0"
-                    >
-                      <span className="text-text-on-dark-muted/50 mr-3">{i + 1}</span>
-                      {step}
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-            <div className="bg-white/[0.04] p-8 md:p-10">
-              <p className="font-sans text-[11px] font-medium uppercase tracking-[0.15em] text-accent mb-6">
-                The New Funnel
-              </p>
-              <div className="space-y-0">
-                {["Ask agent", "Review recommendation", "Purchase"].map(
-                  (step, i) => (
-                    <div
-                      key={i}
-                      className="font-mono text-sm text-text-on-dark font-medium py-2.5 border-b border-white/[0.06] last:border-0"
-                    >
-                      <span className="text-accent mr-3">{i + 1}</span>
-                      {step}
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-          </div>
-
-          <p className="font-sans text-sm text-text-on-dark-muted mt-10 max-w-xl leading-relaxed">
-            For brands, this means one thing: if your product data is not
-            structured for agent consumption, you are invisible. Not poorly
-            ranked. <span className="text-text-on-dark font-medium">Invisible.</span>
+            Discovery drives ecommerce. First it was search engines. Then it was
+            social media. Now it&apos;s AI agents, and they&apos;re rewriting
+            the rules of how products get found, compared, and purchased.
           </p>
         </div>
       </section>
 
-      {/* ── TWO-PHASE APPROACH ── */}
+      {/* ── COMMERCE WITHOUT THE CLICK ── */}
       <section className="section">
         <div className="max-w-6xl mx-auto px-6">
-          <h2 className="section-title">Two-phase approach</h2>
-          <p className="section-subtitle max-w-xl">
-            Get live on agent protocols, then compound your visibility week
-            after week.
-          </p>
+          <h2 className="section-title max-w-2xl">
+            Commerce without the click.
+          </h2>
+          <div className="max-w-2xl mt-8 space-y-5">
+            <p className="font-sans text-base text-text-secondary leading-relaxed">
+              For 20 years, the buying journey looked the same: search &rarr;
+              click &rarr; website &rarr; product page &rarr; cart &rarr;
+              checkout.
+            </p>
+            <p className="font-sans text-base text-text-secondary leading-relaxed">
+              Agentic commerce compresses all of that into three steps: ask
+              &rarr; compare &rarr; buy.
+            </p>
+            <p className="font-sans text-base text-text-secondary leading-relaxed">
+              AI agents like ChatGPT, Google Gemini, and Perplexity are now
+              researching products, comparing options, and completing purchases
+              on behalf of consumers, often without ever visiting a
+              retailer&apos;s website. Your website disappears from the journey
+              entirely.
+            </p>
+            <p className="font-sans text-base text-text-secondary leading-relaxed">
+              This isn&apos;t a future scenario. ChatGPT already processes over
+              50 million shopping queries every day. Google&apos;s AI Overviews
+              reach 1.5 billion people monthly. During the 2025 Thanksgiving
+              weekend, AI agents influenced 17% of all holiday orders.
+            </p>
+          </div>
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-16">
-            {/* Phase 1 */}
-            <div className="card-elevated">
-              <p className="font-sans text-[11px] font-medium uppercase tracking-[0.15em] text-accent mb-3">
-                Phase 1
-              </p>
-              <h3 className="font-display text-2xl font-normal text-text mb-1 tracking-tight">
-                Preparedness
-              </h3>
-              <p className="font-sans text-sm text-text-tertiary mb-8">
-                One-time. We get you live and ready for agent commerce protocols.
-              </p>
+      {/* ── THE NEW INVISIBLE ── */}
+      <section className="section-alt">
+        <div className="max-w-6xl mx-auto px-6">
+          <h2 className="section-title max-w-2xl">
+            The new invisible.
+          </h2>
+          <div className="max-w-2xl mt-8 space-y-5">
+            <p className="font-sans text-base text-text-secondary leading-relaxed">
+              AI agents don&apos;t browse websites, they consume structured
+              product feeds. They parse specifications, compare attributes, and
+              make recommendations based on data quality and completeness. If
+              your product data isn&apos;t optimized for how agents reason, you
+              simply won&apos;t be surfaced. Not ranked lower. Not shown on page
+              two.{" "}
+              <span className="text-text font-medium">Gone.</span>
+            </p>
+            <p className="font-sans text-base text-text-secondary leading-relaxed">
+              McKinsey estimates that agentic commerce will represent $3&ndash;5
+              trillion in revenue by 2030, between 17% and 28% of all B2C
+              ecommerce.
+            </p>
+            <p className="font-sans text-base text-text-secondary leading-relaxed">
+              The retailers who move early will capture disproportionate share in
+              a market that barely existed 12 months ago. The ones who wait will
+              spend the next decade trying to catch up.
+            </p>
+          </div>
+        </div>
+      </section>
 
-              <div className="space-y-3 mb-8">
-                <p className="font-sans text-[10px] font-medium uppercase tracking-[0.12em] text-text-tertiary">
-                  What we do
-                </p>
-                {[
-                  "Strategy session to align on goals and define success metrics",
-                  "Education on the agentic commerce landscape for your category",
-                  "Audit your current product feed against protocol requirements",
-                  "Fill gaps: missing attributes, inconsistent data, incomplete descriptions",
-                  "Connect your feed to OpenAI ACP and Google UCP",
-                  "Validate and go live",
-                ].map((item, i) => (
-                  <div key={i} className="flex gap-3">
-                    <span className="text-border mt-0.5 shrink-0">&mdash;</span>
-                    <p className="font-sans text-sm text-text-secondary leading-relaxed">
-                      {item}
-                    </p>
-                  </div>
-                ))}
-              </div>
+      {/* ── NEW PROTOCOLS ── */}
+      <section className="section">
+        <div className="max-w-6xl mx-auto px-6">
+          <h2 className="section-title max-w-2xl">
+            New protocols. New data requirements. New winners.
+          </h2>
+          <div className="max-w-2xl mt-8 space-y-5">
+            <p className="font-sans text-base text-text-secondary leading-relaxed">
+              The infrastructure for agentic commerce is being built right now.
+              OpenAI launched its Agentic Commerce Protocol (ACP). Google
+              released its Universal Commerce Protocol (UCP). Both these
+              protocols enable agents to not just recommend, but transact.
+            </p>
+            <p className="font-sans text-base text-text-secondary leading-relaxed">
+              These protocols require product data that traditional feeds were
+              never designed to provide. Compatibility signals, Q&amp;A, raw
+              review data and more. Without providing these signals, you risk
+              agents choosing your competitors.
+            </p>
+          </div>
+        </div>
+      </section>
 
-              <div className="border-t border-border pt-6">
-                <p className="font-sans text-[10px] font-medium uppercase tracking-[0.12em] text-text-tertiary mb-3">
-                  What you get
-                </p>
-                <p className="font-sans text-sm text-text-secondary leading-relaxed">
-                  Products purchasable inside ChatGPT and Google AI surfaces.
-                  Readiness report documenting changes and current data quality score.
-                </p>
-              </div>
-            </div>
-
-            {/* Phase 2 */}
-            <div className="card-elevated">
-              <p className="font-sans text-[11px] font-medium uppercase tracking-[0.15em] text-accent mb-3">
-                Phase 2
-              </p>
-              <h3 className="font-display text-2xl font-normal text-text mb-1 tracking-tight">
-                Optimization
-              </h3>
-              <p className="font-sans text-sm text-text-tertiary mb-8">
-                Ongoing. We compound your visibility week after week.
-              </p>
-
-              <div className="space-y-3 mb-8">
-                <p className="font-sans text-[10px] font-medium uppercase tracking-[0.12em] text-text-tertiary">
-                  What we do
-                </p>
-                {[
-                  "Pull performance data \u2014 what\u2019s being surfaced, recommended, purchased",
-                  "Identify underperforming products and categories",
-                  "Optimize your product feed based on what we learn",
-                  "Report back with results and recommendations",
-                ].map((item, i) => (
-                  <div key={i} className="flex gap-3">
-                    <span className="text-border mt-0.5 shrink-0">&mdash;</span>
-                    <p className="font-sans text-sm text-text-secondary leading-relaxed">
-                      {item}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="border-t border-border pt-6 mb-8">
-                <p className="font-sans text-[10px] font-medium uppercase tracking-[0.12em] text-text-tertiary mb-3">
-                  What you get
-                </p>
-                <p className="font-sans text-sm text-text-secondary leading-relaxed">
-                  Performance report with actionable insights. Strategic review
-                  of what&rsquo;s working and what to prioritize. Ongoing optimization
-                  without adding headcount.
-                </p>
-              </div>
-
-              <div className="bg-surface-subtle rounded-sm p-6">
-                <h4 className="font-display text-base font-normal text-text mb-2 tracking-tight">
-                  The compound effect
-                </h4>
-                <p className="font-sans text-sm text-text-secondary leading-relaxed">
-                  Each optimization cycle feeds the next. As we learn what agents
-                  prioritize for your category, we refine your data to match &mdash;
-                  building a compounding advantage competitors without this system
-                  can&rsquo;t replicate.
-                </p>
-              </div>
-            </div>
+      {/* ── WINDOW WON'T STAY OPEN ── */}
+      <section className="section-alt">
+        <div className="max-w-6xl mx-auto px-6">
+          <h2 className="section-title max-w-2xl">
+            This window won&apos;t stay open long.
+          </h2>
+          <div className="max-w-2xl mt-8 space-y-5">
+            <p className="font-sans text-base text-text-secondary leading-relaxed">
+              45% of US consumers already use generative AI for product research
+              and comparison. 44% of users who&apos;ve tried AI-powered search
+              say it&apos;s become their primary way of searching, replacing
+              Google as the default. The behavioral shift has already happened.
+            </p>
+            <p className="font-sans text-base text-text-secondary leading-relaxed">
+              What hasn&apos;t happened yet is most retailers responding. Massive
+              consumer adoption but minimal retailer preparation is a massive
+              opportunity. Early movers don&apos;t just get a head start. The
+              early winners become the default recommendations.
+            </p>
+            <p className="font-sans text-base text-text font-medium leading-relaxed">
+              The question isn&apos;t whether agentic commerce will reshape
+              retail. It&apos;s whether your products will be visible when it
+              does.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-4 mt-12">
@@ -187,12 +145,12 @@ export default function AgenticCommercePage({
             >
               View Pricing
             </button>
-            <button
-              onClick={() => onNavigate("insight")}
+            <a
+              href="mailto:william@usecarve.com"
               className="btn-ghost"
             >
-              Read the full story <span aria-hidden="true">&rarr;</span>
-            </button>
+              Talk to sales <span aria-hidden="true">&rarr;</span>
+            </a>
           </div>
         </div>
       </section>

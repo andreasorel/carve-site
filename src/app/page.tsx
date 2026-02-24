@@ -3,13 +3,13 @@
 import { useState } from "react";
 import Masthead from "@/components/Masthead";
 import HomePage from "@/components/HomePage";
+import AboutPage from "@/components/AboutPage";
 import AgenticCommercePage from "@/components/AgenticCommercePage";
 import PricingPage from "@/components/PricingPage";
-import InsightPage from "@/components/InsightPage";
-import GetStartedPage from "@/components/GetStartedPage";
+import BlogPage from "@/components/BlogPage";
 import ScorePage from "@/components/ScorePage";
 
-type Page = "home" | "commerce" | "pricing" | "insight" | "started" | "score";
+type Page = "home" | "about" | "commerce" | "pricing" | "blog" | "score";
 
 export default function Root() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
@@ -25,10 +25,10 @@ export default function Root() {
 
       <main>
         {currentPage === "home" && <HomePage onNavigate={navigate} />}
+        {currentPage === "about" && <AboutPage onNavigate={navigate} />}
         {currentPage === "commerce" && <AgenticCommercePage onNavigate={navigate} />}
         {currentPage === "pricing" && <PricingPage onNavigate={navigate} />}
-        {currentPage === "insight" && <InsightPage onNavigate={navigate} />}
-        {currentPage === "started" && <GetStartedPage onNavigate={navigate} />}
+        {currentPage === "blog" && <BlogPage onNavigate={navigate} />}
         {currentPage === "score" && <ScorePage />}
       </main>
 

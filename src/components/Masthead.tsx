@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-type Page = "home" | "commerce" | "pricing" | "insight" | "started" | "score";
+type Page = "home" | "about" | "commerce" | "pricing" | "blog" | "score";
 
 export default function Masthead({
   currentPage,
@@ -14,10 +14,10 @@ export default function Masthead({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const tabs: { label: string; page: Page }[] = [
+    { label: "About", page: "about" },
     { label: "Agentic Commerce", page: "commerce" },
     { label: "Pricing", page: "pricing" },
-    { label: "Memo", page: "insight" },
-    { label: "Get Started", page: "started" },
+    { label: "Blog", page: "blog" },
   ];
 
   return (
